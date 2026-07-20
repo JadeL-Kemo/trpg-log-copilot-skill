@@ -109,7 +109,7 @@ def fallback_chm_extract(filepath):
     seven_zip_paths = [
         r"C:\Program Files\7-Zip\7z.exe",
         r"C:\Program Files (x86)\7-Zip\7z.exe",
-        r"E:\Program Files (x86)\Lua\5.1\7z.exe",
+        r"D:\Program Files\7-Zip\7z.exe",
     ]
     # Also check PATH
     import subprocess
@@ -208,85 +208,103 @@ def fallback_chm_extract(filepath):
             continue
 
     # Fallback: hh.exe (Windows only)
-    try:
-        import tempfile, shutil
-        tmpdir = str(Path(filepath).parent / '.chm_extract')
-        if os.path.exists(tmpdir):
-            shutil.rmtree(tmpdir, ignore_errors=True)
-        os.makedirs(tmpdir, exist_ok=True)
-        subprocess.run(
-            ['hh.exe', '-decompile', tmpdir, filepath],
-            capture_output=True, timeout=300, check=False
-        )
-        # Collect all HTML files and build hierarchy tree
-        tmp = Path(tmpdir)
-        html_files = list(tmp.rglob("*.htm*"))
-        if html_files:
-            tree = {}
-            for hf in html_files:
-                try:
-                    rel = hf.relative_to(tmp)
-                except ValueError:
-                    continue
-                parts = rel.parts
-                node = tree
-                for part in parts[:-1]:
-                    if part not in node:
-                        node[part] = {}
-                    node = node[part]
-                node[parts[-1]] = hf
+    # Check common install paths in addition to PATH
+    hh_paths = [
+        r"C:\Windows\hh.exe",
+        r"C:\Windows\System32\hh.exe",
+    ]
+    hh_exe = None
+    for p in hh_paths:
+        if os.path.exists(p):
+            hh_exe = p
+            break
+    if not hh_exe:
+        try:
+            result = subprocess.run(['where', 'hh.exe'], capture_output=True, timeout=5)
+            if result.returncode == 0:
+                hh_exe = result.stdout.decode('gbk', errors='replace').strip().split('\n')[0].strip()
+        except Exception:
+            pass
 
-            def _flatten_tree(t, depth=0):
-                result = []
-                for key, val in sorted(t.items()):
-                    if isinstance(val, Path):
-                        try:
-                            raw = val.read_bytes()
-                            meta_match = re.search(rb'charset=([a-zA-Z0-9-]+)', raw[:4096])
-                            enc = meta_match.group(1).decode('ascii') if meta_match else 'utf-8'
-                            text = raw.decode(enc, errors='replace')
-                            text = html_to_markdown(text)
-                            if len(text.strip()) > 50:
+    if hh_exe:
+        try:
+            import tempfile, shutil
+            tmpdir = str(Path(filepath).parent / '.chm_extract')
+            if os.path.exists(tmpdir):
+                shutil.rmtree(tmpdir, ignore_errors=True)
+            os.makedirs(tmpdir, exist_ok=True)
+            subprocess.run(
+                [hh_exe, '-decompile', tmpdir, filepath],
+                capture_output=True, timeout=300, check=False
+            )
+            # Collect all HTML files and build hierarchy tree
+            tmp = Path(tmpdir)
+            html_files = list(tmp.rglob("*.htm*"))
+            if html_files:
+                tree = {}
+                for hf in html_files:
+                    try:
+                        rel = hf.relative_to(tmp)
+                    except ValueError:
+                        continue
+                    parts = rel.parts
+                    node = tree
+                    for part in parts[:-1]:
+                        if part not in node:
+                            node[part] = {}
+                        node = node[part]
+                    node[parts[-1]] = hf
+
+                def _flatten_tree(t, depth=0):
+                    result = []
+                    for key, val in sorted(t.items()):
+                        if isinstance(val, Path):
+                            try:
+                                raw = val.read_bytes()
+                                meta_match = re.search(rb'charset=([a-zA-Z0-9-]+)', raw[:4096])
+                                enc = meta_match.group(1).decode('ascii') if meta_match else 'utf-8'
+                                text = raw.decode(enc, errors='replace')
+                                text = html_to_markdown(text)
+                                if len(text.strip()) > 50:
+                                    result.append({
+                                        "title": val.stem,
+                                        "content": text,
+                                        "depth": depth + 1
+                                    })
+                            except Exception:
+                                pass
+                        elif isinstance(val, dict):
+                            children = _flatten_tree(val, depth + 1)
+                            if children:
                                 result.append({
-                                    "title": val.stem,
-                                    "content": text,
-                                    "depth": depth + 1
+                                    "title": key,
+                                    "content": "",
+                                    "depth": depth + 1,
+                                    "is_section": True
                                 })
-                        except Exception:
-                            pass
-                    elif isinstance(val, dict):
-                        children = _flatten_tree(val, depth + 1)
-                        if children:
-                            result.append({
-                                "title": key,
-                                "content": "",
-                                "depth": depth + 1,
-                                "is_section": True
-                            })
-                            result.extend(children)
-                return result
+                                result.extend(children)
+                    return result
 
-            pages = _flatten_tree(tree)
-            # Deduplicate single-child section headers
-            merged = []
-            i = 0
-            while i < len(pages):
-                pg = pages[i]
-                if pg.get('is_section') and i + 1 < len(pages) and pages[i + 1].get('depth', 0) > pg.get('depth', 0):
-                    merged.append(pages[i + 1])
-                    i += 2
-                elif pg.get('is_section'):
-                    merged.append({"title": pg['title'], "content": "", "depth": pg['depth']})
-                    i += 1
-                else:
-                    merged.append(pg)
-                    i += 1
-            pages = merged
-        shutil.rmtree(tmpdir, ignore_errors=True)
-        if pages:
-            return {"source": "chm+hh", "pages": pages, "structure": "flat"}
-    except Exception:
-        pass
+                pages = _flatten_tree(tree)
+                merged = []
+                i = 0
+                while i < len(pages):
+                    pg = pages[i]
+                    if pg.get('is_section') and i + 1 < len(pages) and pages[i + 1].get('depth', 0) > pg.get('depth', 0):
+                        merged.append(pages[i + 1])
+                        i += 2
+                    elif pg.get('is_section'):
+                        merged.append({"title": pg['title'], "content": "", "depth": pg['depth']})
+                        i += 1
+                    else:
+                        merged.append(pg)
+                        i += 1
+                pages = merged
+            shutil.rmtree(tmpdir, ignore_errors=True)
+            if pages:
+                return {"source": "chm_hh", "pages": pages, "structure": "directories"}
+        except Exception:
+            pass
 
     # Absolute last resort: basic extraction note
     data = Path(filepath).read_bytes()
