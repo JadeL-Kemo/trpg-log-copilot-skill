@@ -1,7 +1,7 @@
 # TRPG Log Copilot 跑团助手
 
 [![Skill Type](https://img.shields.io/badge/CodeBuddy-SKILL-blue)](https://www.codebuddy.ai/)
-[![Version](https://img.shields.io/badge/version-1.4-green)]()
+[![Version](https://img.shields.io/badge/version-1.4.1-green)]()
 
 将 AI Agent 变成跑团副官/秘书/私人助手。支持 Player 和 GM 双模式。
 
