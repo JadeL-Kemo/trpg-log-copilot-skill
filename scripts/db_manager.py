@@ -77,8 +77,10 @@ def cmd_init(db_path):
     print("Database initialized successfully.")
 
 
-def cmd_clue_add(db_path, clue_json):
-    """Add a clue from JSON string."""
+def cmd_clue_add(db_path, clue_json=None):
+    """Add a clue from JSON string (or stdin if None)."""
+    if clue_json is None:
+        clue_json = sys.stdin.buffer.read().decode('utf-8-sig')
     data = json.loads(clue_json)
     conn = get_conn(db_path)
     conn.execute("""
@@ -245,12 +247,13 @@ def main():
     if args_ns.command == "init":
         cmd_init(args_ns.db_path)
     elif args_ns.command == "clue":
-        if len(args_ns.args) >= 2 and args_ns.args[0] == "add":
-            cmd_clue_add(args_ns.db_path, " ".join(args_ns.args[1:]))
+        if len(args_ns.args) >= 1 and args_ns.args[0] == "add":
+            json_data = " ".join(args_ns.args[1:]) if len(args_ns.args) > 1 else None
+            cmd_clue_add(args_ns.db_path, json_data)
         elif len(args_ns.args) >= 2 and args_ns.args[0] == "search":
             cmd_clue_search(args_ns.db_path, args_ns.args[1])
         else:
-            print("Usage: db_manager.py <db> clue add <json> | clue search <keyword>")
+            print("Usage: db_manager.py <db> clue add [<json>] | clue search <keyword>")
     elif args_ns.command == "npc":
         cmd_npc_list(args_ns.db_path)
     elif args_ns.command == "timeline":
