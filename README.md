@@ -1,6 +1,6 @@
 # TRPG Log Copilot — 跑团副官
 
-[![CodeBuddy](https://img.shields.io/badge/CodeBuddy-SKILL-blue)](https://www.codebuddy.ai) [![Version](https://img.shields.io/badge/version-1.5.0-green)](https://github.com/JadeL-Kemo/trpg-log-copilot-skill/releases) 
+[![CodeBuddy](https://img.shields.io/badge/CodeBuddy-SKILL-blue)](https://www.codebuddy.ai) [![Version](https://img.shields.io/badge/version-1.5.0-green)](https://github.com/JadeL-Kemo/trpg-log-copilot-skill/releases) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE) 
 
 
 
