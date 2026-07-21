@@ -56,6 +56,7 @@ LOG_FILES = {
 
     "00_当前局势.md": """# 当前局势 — 速览仪表盘
 
+> 📍归档进度: Step 0/6 — 等待首轮聊天记录
 > **更新：** {timestamp} | **当前状态：** 🟡 第一幕开始
 > **用途：** 每次回复前 30 秒扫一遍
 
@@ -300,16 +301,13 @@ LOG_FILES = {
 
     "05_推测与假设.md": """# 推测与假设
 
-> **证据标准（铁律——混淆视为无效）：**
-> - 🟢 **已证实** = KP原话明确确认，或多个独立来源交叉验证一致 → **可作为分析依据**
-> - 🟡 **需证实** = 基于已证事实的合逻辑推断，但缺乏KP直接确认 → 需验证后升级或排除
-> - 🔴 **仅推测** = 无直接事实支撑的猜测、直觉、或基于角色行为的主观解读 → 仅供参考，不可作为决策依据
->
-> **标注规则：** 每个假设后方必须标注状态标签。
+> **双维标签:** [来源: 场内/场外/推测/铁证] [确信: 高/中/低/确定]
+> 来源标签不可越级变更。推测→场内需新证据，推测→铁证禁止。
+> 证据标准详见 `references/evidence_standards.md`。
 
 ---
 
-## 🟢 已证实
+## 🟢 [确信: 高/确定] — 已证实或强证据
 
 > 以下假设已有KP直接确认或多源交叉验证，在后续分析中视为**事实基底**。
 
@@ -317,15 +315,15 @@ LOG_FILES = {
 
 ---
 
-## 🟡 需证实
+## 🟡 [确信: 中] — 需证实
 
-> 以下基于已证事实的合逻辑推断，需进一步验证后方可升级为已证实。
+> 以下基于已证事实的合逻辑推断，需进一步验证后方可升级。
 
 （空——待填充）
 
 ---
 
-## 🔴 仅推测
+## 🔴 [确信: 低] — 仅推测
 
 > 以下缺乏直接事实支撑，仅为角色行为解读或直觉假设。**不可作为决策依据。**
 
@@ -431,9 +429,11 @@ LOG_FILES = {
 
 ### 每条线索必须标注
 
-- **【来源】**：KP叙述 / 某角色发言 / 骰子结果 / 场外信息
-- **【可靠性】**：✅/🟡/🔴/ℹ️/⚠️
-- **【关联编号】**：引用已有关联线索编号
+- **【来源】**：场内 / 场外 / 推测 / 铁证
+- **【确信】**：高 / 中 / 低 / 确定
+- **【关联编号】**：引用已有关联线索编号 (linked_ids)
+
+> 详细标准见 `references/evidence_standards.md`。来源不可越级变更。
 
 ---
 
@@ -458,11 +458,24 @@ LOG_FILES = {
 
 ## 四、证据标准（铁律）
 
-| 标注 | 含义 | 能否作为决策依据 |
-|------|------|-----------------|
-| 🟢 已证实 | KP确认/多源验证 | ✅ 可作为分析基底 |
-| 🟡 需证实 | 合逻辑推断，缺KP确认 | ⚠️ 需验证后使用 |
-| 🔴 仅推测 | 无事实支撑 | ❌ 不可作为决策依据 |
+### 双维标签
+
+| 来源 | 含义 |
+|------|------|
+| `场内` | 游戏内NPC/场景给的信息 (有证据) |
+| `检定` | 骰子/技能检定结果 |
+| `场外` | KP闲聊/暗示 (有真相无证据) |
+| `推测` | 玩家/副官推理 (无证据无真相) |
+| `铁证` | 参考资料+人证+KP明示 (固定确信=确定) |
+
+| 确信 | 适用来源 | 含义 |
+|------|----------|------|
+| `高` | 场内/场外/推测 | 可靠信息源或强逻辑 |
+| `中` | 场内/场外/推测 | 有一定依据但不确凿 |
+| `低` | 场内/场外/推测 | 直觉或弱线索 |
+| `确定` | 铁证 | 无可争议 |
+
+**来源不可越级。** 推测→铁证 ❌ | 推测→场内 ✅ (需证据) | 场内→铁证 ✅ | 确信度可升降。
 
 ---
 
@@ -639,15 +652,33 @@ def init_database(log_dir):
             id TEXT PRIMARY KEY,
             content TEXT NOT NULL,
             source TEXT NOT NULL,
-            reliability TEXT NOT NULL,
+            confidence TEXT NOT NULL,
             category TEXT DEFAULT 'core',
             status TEXT DEFAULT 'active',
             scene_id TEXT,
-            tags TEXT DEFAULT '[]',
-            related_clues TEXT DEFAULT '[]',
+            linked_ids TEXT DEFAULT '[]',
             created_at TEXT DEFAULT (datetime('now','localtime')),
             updated_at TEXT DEFAULT (datetime('now','localtime'))
         );
+
+        -- FTS5 全文搜索 (自动同步触发器, 零维护)
+        CREATE VIRTUAL TABLE IF NOT EXISTS clues_fts USING fts5(
+            content, source, confidence, content=clues, content_rowid=rowid
+        );
+        CREATE TRIGGER IF NOT EXISTS clues_ai AFTER INSERT ON clues BEGIN
+            INSERT INTO clues_fts(rowid, content, source, confidence)
+            VALUES (new.rowid, new.content, new.source, new.confidence);
+        END;
+        CREATE TRIGGER IF NOT EXISTS clues_ad AFTER DELETE ON clues BEGIN
+            INSERT INTO clues_fts(clues_fts, rowid, content, source, confidence)
+            VALUES ('delete', old.rowid, old.content, old.source, old.confidence);
+        END;
+        CREATE TRIGGER IF NOT EXISTS clues_au AFTER UPDATE ON clues BEGIN
+            INSERT INTO clues_fts(clues_fts, rowid, content, source, confidence)
+            VALUES ('delete', old.rowid, old.content, old.source, old.confidence);
+            INSERT INTO clues_fts(rowid, content, source, confidence)
+            VALUES (new.rowid, new.content, new.source, new.confidence);
+        END;
 
         CREATE TABLE IF NOT EXISTS npcs (
             id TEXT PRIMARY KEY,

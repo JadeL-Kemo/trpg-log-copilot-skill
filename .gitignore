@@ -1,7 +1,11 @@
-__pycache__/
-*.pyc
-*.pyo
+# 演示文件（展示效果用，安装时不需分发）
+demo/
+
+# 临时文件
+._temp/
+.recycle/
+
+# 系统文件
 .DS_Store
-*.db
-*.db-journal
-.recycle
+Thumbs.db
+desktop.ini

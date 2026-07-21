@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [2.0.0] — 2026-07-21
+## [1.5.0 — 2026-07-21
 
 ### Added
 
@@ -34,6 +34,14 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+---
+
+## [1.4.3] — 2026-07-21
+
+See [Releases](https://github.com/JadeL-Kemo/trpg-log-copilot-skill/releases) for details.
+
+---
+
 ## [1.0.0] — 2026-06
 
 ### Added
@@ -48,3 +56,4 @@ All notable changes to this project will be documented in this file.
 - 防超游分层
 - 三级证据标签 🟢🟡🔴
 - 平台迁移工具
+
