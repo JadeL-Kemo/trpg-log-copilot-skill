@@ -116,30 +116,39 @@ def cmd_init(db_path):
         );
         CREATE INDEX IF NOT EXISTS idx_csl_name ON char_state_log(char_name);
         CREATE INDEX IF NOT EXISTS idx_csl_scene ON char_state_log(scene_ref);
+
+        -- ★ v1.6.2: 显示词典 — 键值→中文名（AI可用作枚举查询）
+        CREATE TABLE IF NOT EXISTS dict_labels (
+            category TEXT NOT NULL,   -- 'pool' | 'reason' | 'status'
+            key      TEXT NOT NULL,
+            cn_name  TEXT NOT NULL,
+            PRIMARY KEY (category, key)
+        );
+        INSERT OR IGNORE INTO dict_labels VALUES
+            ('pool','hp','生命值'),('pool','san','理智值'),('pool','mp','魔力值'),
+            ('pool','luck','幸运'),('pool','ac','护甲等级'),
+            ('pool','spell_l1','1环法术位'),('pool','spell_l2','2环法术位'),
+            ('pool','spell_l3','3环法术位'),('pool','spell_l4','4环法术位'),
+            ('pool','spell_l5','5环法术位'),('pool','spell_l6','6环法术位'),
+            ('pool','spell_l7','7环法术位'),('pool','spell_l8','8环法术位'),
+            ('pool','spell_l9','9环法术位'),('pool','ki','气'),('pool','rage','狂暴'),
+            ('reason','combat_melee','近战伤害'),('reason','combat_weapon','武器伤害'),
+            ('reason','combat_fire','火焰伤害'),('reason','combat_fall','坠落伤害'),
+            ('reason','env_cold','寒冷'),('reason','env_heat','高温'),
+            ('reason','env_poison','中毒'),('reason','sanity_pass','SAN检定通过'),
+            ('reason','sanity_fail','SAN检定失败'),('reason','spell_consume','法术消耗'),
+            ('reason','rest_short','短休恢复'),('reason','rest_long','长休恢复'),
+            ('reason','death_save','死亡豁免'),('reason','heal_natural','自然恢复'),
+            ('reason','heal_magic','法术恢复'),('reason','attr_change','属性变更'),
+            ('reason','status_add','状态施加'),('reason','status_remove','状态解除'),
+            ('reason','init','初始注册'),
+            ('status','unconscious','昏迷'),('status','active','正常'),
+            ('status','ko','击倒'),('status','dead','死亡'),
+            ('status','mad','疯狂'),('status','stable','稳定');
     """)
     conn.commit()
     conn.close()
-    print("Database initialized (FTS5 + char_state).")
-
-
-# ==================== 线索 CRUD ====================
-
-def cmd_clue_add(db_path, clue_json=None):
-    if clue_json is None:
-        clue_json = sys.stdin.buffer.read().decode('utf-8-sig')
-    data = json.loads(clue_json)
-    conn = get_conn(db_path)
-    conn.execute("""
-        INSERT OR REPLACE INTO clues
-        (id, content, source, confidence, category, status, scene_id, linked_ids)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (data.get('id'), data.get('content'), data.get('source', ''),
-          data.get('confidence', '低'), data.get('category', 'core'),
-          data.get('status', 'active'), data.get('scene_id'),
-          data.get('linked_ids', '[]')))
-    conn.commit()
-    conn.close()
-    print(f"Clue {data.get('id')} added.")
+    print("Database initialized (FTS5 + char_state + dict_labels).")
 
 
 def cmd_clue_link(db_path, id_a, id_b):
@@ -291,33 +300,36 @@ def cmd_state_add(db_path, name, deltas, loc, status, reason, clue_ref, scene_re
     delta_str = " ".join(f"{k}{v:+d}" for k,v in deltas.items())
     print(f"state_add: {name} seq={seq} {delta_str} reason={reason}")
 
+def _load_dict(conn, category):
+    rows = conn.execute("SELECT key, cn_name FROM dict_labels WHERE category=?", (category,)).fetchall()
+    return {r['key']: r['cn_name'] for r in rows}
+
 def cmd_state_query(db_path, name):
     conn = get_conn(db_path)
-    rows = conn.execute("SELECT seq,deltas,reason,clue_ref,scene_ref,round,created_at FROM char_state_log WHERE char_name=? ORDER BY seq", (name,)).fetchall()
-    if not rows:
-        print(f"No changes recorded for {name}")
-        conn.close(); return
+    pool_dict = _load_dict(conn, 'pool')
+    reason_dict = _load_dict(conn, 'reason')
+    rows = conn.execute("SELECT seq,deltas,reason,clue_ref,scene_ref,round FROM char_state_log WHERE char_name=? ORDER BY seq", (name,)).fetchall()
+    if not rows: print(f"No changes for {name}"); conn.close(); return
     print(f"\n=== {name} ===")
     for r in rows:
         deltas = json.loads(r['deltas'])
-        d_str = " ".join(f"{k}{v:+d}" for k,v in deltas.items())
-        parts = [f"#{r['seq']}", d_str, f"─ {r['reason']}"]
-        if r['clue_ref']: parts.append(f"[{r['clue_ref']}]")
+        d_str = " ".join("{0}{1:+d}".format(pool_dict.get(k,k), v) for k,v in deltas.items())
+        parts = ["#{0}".format(r['seq']), d_str, "{0}".format(reason_dict.get(r['reason'], r['reason']))]
+        if r['clue_ref']: parts.append("[{0}]".format(r['clue_ref']))
         print(" ".join(parts))
     conn.close()
 
 def cmd_state_current(db_path, name=None):
-    """Show current state. All view: intersection pools. Single view: all pools."""
+    """Show current state. Vertical per character, Chinese labels from dict_labels."""
     conn = get_conn(db_path)
+    pool_dict = _load_dict(conn, 'pool')
+    status_dict = _load_dict(conn, 'status')
     if name:
         bases = conn.execute("SELECT char_name,char_type,base_stats FROM char_base WHERE char_name=?", (name,)).fetchall()
     else:
         bases = conn.execute("SELECT char_name,char_type,base_stats FROM char_base ORDER BY char_name").fetchall()
-    if not bases:
-        print("No characters tracked. Use 'state init' first.")
-        conn.close(); return
+    if not bases: print("No characters tracked."); conn.close(); return
 
-    # Pre-compute totals for all characters
     char_data = []
     for b in bases:
         base = json.loads(b['base_stats'])
@@ -326,45 +338,26 @@ def cmd_state_current(db_path, name=None):
         for dr in delta_rows:
             for k, v in json.loads(dr['deltas']).items():
                 totals[k] = totals.get(k, 0) + v
-        last = conn.execute("SELECT loc_new,status_new,reason FROM char_state_log WHERE char_name=? ORDER BY seq DESC LIMIT 1", (b['char_name'],)).fetchone()
+        last = conn.execute("SELECT loc_new,status_new FROM char_state_log WHERE char_name=? AND (loc_new IS NOT NULL OR status_new IS NOT NULL) ORDER BY seq DESC LIMIT 1", (b['char_name'],)).fetchone()
         char_data.append({
             'name': b['char_name'], 'type': b['char_type'],
             'base': base, 'totals': totals,
-            'loc': last['loc_new'] if last and last['loc_new'] else '',
-            'status': last['status_new'] if last and last['status_new'] else '',
-            'reason': last['reason'] if last and last['reason'] else '',
+            'loc': last['loc_new'] if last and last['loc_new'] else '-',
+            'status': status_dict.get(last['status_new'], last['status_new']) if last and last['status_new'] else '-',
         })
 
-    # Pool selection: single char = all pools; all chars = intersection
-    if name:
-        pools = sorted(char_data[0]['base'].keys())
-    else:
-        # Intersection: only pools present in EVERY character
-        pool_sets = [set(cd['base'].keys()) for cd in char_data]
-        intersection = pool_sets[0]
-        for ps in pool_sets[1:]:
-            intersection &= ps
-        pools = sorted(intersection)
-        # Count characters with unique pools
-        unique_count = sum(1 for cd in char_data if set(cd['base'].keys()) - intersection)
-        if not pools:
-            print("No common pools across characters. Use 'state current <name>' for per-character view.")
-            conn.close(); return
-
-    max_w = {p: max(len(p), 5) for p in pools}
-    print(f"{'Name':<16} {'Type':<4}", end="")
-    for p in pools:
-        print(f" {p:>{max_w[p]}}", end="")
-    print(f" {'Loc':<14} {'Status':<8} {'Last'}")
-    print("-" * (30 + sum(max_w.values())))
     for cd in char_data:
-        print(f"{cd['name']:<16} {cd['type']:<4}", end="")
-        for p in pools:
-            cur = cd['totals'].get(p, '?')
-            print(f" {cur:>{max_w[p]}}" if cur != '?' else f" {'?':>{max_w[p]}}", end="")
-        print(f" {cd['loc']:<14} {cd['status']:<8} {cd['reason']}")
-    if not name and unique_count:
-        print(f"\n({unique_count} character(s) have additional unique pools. Use 'state current <name>' for details.)")
+        fixed = []; floating = []
+        for k in sorted(cd['base'].keys()):
+            mx = cd['base'][k]; cur = cd['totals'].get(k,'?')
+            cn = pool_dict.get(k, k); net = cur - mx if isinstance(cur,int) and isinstance(mx,int) else 0
+            fixed.append("{0}: {1}".format(cn, mx))
+            if net != 0: floating.append("{0}: {1:+d}".format(cn, net))
+        print("=== {0} ({1}) ===".format(cd['name'], cd['type']))
+        if floating: print("  浮动: " + " | ".join(floating))
+        print("  固定: " + " | ".join(fixed))
+        print("  位置: {0} | 状态: {1}".format(cd['loc'], cd['status']))
+        print()
     conn.close()
 
 
