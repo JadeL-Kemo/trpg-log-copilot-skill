@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel v1.8</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<div id="pull"></div>
+<div id="dash"></div>
+<nav></nav>
+<div id="clues" class="panel active"><h2>线索板</h2><div id="ct"></div></div>
+<div id="npcs" class="panel"><h2>人物关系</h2><div id="nt"></div></div>
+<div id="tl" class="panel"><h2 onclick="document.getElementById('chr').classList.toggle('fold')" style="cursor:pointer">▶ 大纪事</h2><div id="chr" class="chr-wrap fold"></div><h2 style="margin-top:16px">事件线</h2><div id="tt"></div></div>
+<div id="chars" class="panel"><h2>角色状态</h2><div id="cc"></div></div>
+<div id="todos" class="panel"><h2>待办事项</h2><div id="tlst"></div></div>
+<div class="ts" id="ts"></div>
+<div id="drill" onclick="var e=event;if(e.target===this)closeDrill()"><div id="drillPane"><div id="drillHead"><span id="drillTitle"></span><button id="drillClose" onclick="closeDrill()">✕</button></div><div id="drillBody"></div></div></div>
+<script src="panel.js"></script>
+</body>
+</html>

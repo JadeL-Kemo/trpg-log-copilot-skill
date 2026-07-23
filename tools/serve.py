@@ -77,13 +77,16 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         global last_req
         with lock: last_req = time.time()
+        if self.path == '/api/data':
+            self._serve_data()
+            return
         if self.path.startswith('/api/'):
             try:
                 import urllib.parse, sqlite3
                 qs = urllib.parse.urlparse(self.path).query
                 params = urllib.parse.parse_qs(qs)
                 sid = urllib.parse.unquote(params.get('id', [''])[0])
-                q = urllib.parse.unquote(params.get('q', [''])[0])  # event text for FTS5 fallback
+                q = urllib.parse.unquote(params.get('q', [''])[0])
                 text = ''
                 db = os.path.join('.', 'trpg_data.db')
                 if os.path.exists(db):
@@ -113,6 +116,52 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(str(e).encode('utf-8'))
             return
         super().do_GET()
+    
+    def _serve_data(self):
+        """Return full panel data as JSON — pure JS rendering."""
+        import json, sqlite3
+        db = os.path.join('.', 'trpg_data.db')
+        if not os.path.exists(db):
+            self._json_resp({"error": "no db"})
+            return
+        conn = sqlite3.connect(db); conn.row_factory = sqlite3.Row
+        data = {
+            "clues": [dict(r) for r in conn.execute("SELECT id,content,source,confidence,tags,linked_ids FROM clues ORDER BY id")],
+            "npcs": [dict(r) for r in conn.execute("SELECT id,name,role,stance,faction,key_facts,relationships FROM npcs ORDER BY id")],
+            "events": [dict(r) for r in conn.execute("SELECT event_time,event,participants,related_clues,notes,scene_id FROM timeline_events WHERE category IS NULL OR category != 'chronicle' ORDER BY event_time")],
+            "chronicles": [dict(r) for r in conn.execute("SELECT event_date,event,participants,related_clues,notes FROM timeline_events WHERE category='chronicle' ORDER BY event_date")],
+            "relations": [dict(r) for r in conn.execute("SELECT id,npc_a,npc_b,rel_type,direction,source_ref FROM npc_relations ORDER BY npc_a,npc_b")],
+            "labels": {"verified": {}, "confidence": {}}
+        }
+        for r in conn.execute("SELECT key,cn_name,category FROM dict_labels WHERE category IN ('verified','confidence')"):
+            data["labels"][r['category']][r['key']] = r['cn_name']
+        conn.close()
+        # Add character dash summary
+        conn2 = sqlite3.connect(db); conn2.row_factory = sqlite3.Row
+        chars = []
+        for ch in conn2.execute("SELECT char_name,char_type,base_stats FROM char_base ORDER BY CASE char_type WHEN 'pc' THEN 0 END, char_name"):
+            base = json.loads(ch['base_stats']); totals = dict(base)
+            for d in conn2.execute("SELECT deltas FROM char_state_log WHERE char_name=? ORDER BY seq", (ch['char_name'],)):
+                for k, v in json.loads(d['deltas']).items(): totals[k] = totals.get(k, 0) + v
+            last = conn2.execute("SELECT loc_new,status_new FROM char_state_log WHERE char_name=? AND (loc_new IS NOT NULL OR status_new IS NOT NULL) ORDER BY seq DESC LIMIT 1", (ch['char_name'],)).fetchone()
+            pools = {}
+            for k in sorted(base.keys()):
+                pools[k] = {"cur": totals.get(k, '?'), "max": base[k]}
+            chars.append({"name": ch['char_name'], "type": ch['char_type'], "pools": pools,
+                "loc": last['loc_new'] if last and last['loc_new'] else '-',
+                "status": last['status_new'] if last and last['status_new'] else '-'})
+        conn2.close()
+        data["chars"] = chars
+        self._json_resp(data)
+    
+    def _json_resp(self, data):
+        import json
+        body = json.dumps(data, ensure_ascii=False).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', len(body))
+        self.end_headers()
+        self.wfile.write(body)
     
     def log_message(self, fmt, *args): pass
 

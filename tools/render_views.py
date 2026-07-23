@@ -89,28 +89,18 @@ DATA = json.dumps({
     "labels": {"verified": labels['verified'], "confidence": labels['confidence']}
 }, ensure_ascii=False)
 
-html = """<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panel v1.7</title>
-<link rel="stylesheet" href="panel.css?v={ts}">
-</head><body>
-<div id="pull"></div>
-<div id="dash">{dash}</div>
-<nav><button class="active" onclick="S(this,'clues')">线索</button>
-<button onclick="S(this,'npcs')">人物</button>
-<button onclick="S(this,'tl')">时间线</button>
-<button onclick="S(this,'chars')">角色</button>
-<button onclick="S(this,'todos')">待办</button></nav>
-<div id="clues" class="panel active"><h2>线索板</h2><div id="ct"></div></div>
-<div id="npcs" class="panel"><h2>人物关系</h2><div id="nt"></div></div>
-<div id="tl" class="panel"><h2 onclick="document.getElementById('chr').classList.toggle('fold')" style="cursor:pointer">▶ 大纪事</h2><div id="chr" class="chr-wrap fold"></div><h2 style="margin-top:16px">事件线</h2><div id="tt"></div></div>
-<div id="chars" class="panel"><h2>角色状态</h2><div id="cc"></div></div>
-<div id="todos" class="panel"><h2>待办事项</h2><div id="tlst"></div></div>
-<div class="ts">更新于 {ts} · v1.7</div>
-<div id="drill" onclick="var e=event;if(e.target===this)closeDrill()"><div id="drillPane"><div id="drillHead"><span id="drillTitle"></span><button id="drillClose" onclick="closeDrill()">✕</button></div><div id="drillBody"></div></div></div>
-<script>var DATA={data};</script>
-<script src="panel.js?v={ts}"></script>
-</body></html>""".format(dash=dash, ts=ts, data=DATA)
+# Use static template from assets/
+import os as _os
+tmpl_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'assets', 'panel.html')
+if _os.path.exists(tmpl_path):
+    tmpl = open(tmpl_path, 'r', encoding='utf-8').read()
+else:
+    # Fallback: minimal shell
+    tmpl = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Panel</title><link rel="stylesheet" href="panel.css"></head><body><div id="dash"></div><nav></nav><div id="clues" class="panel active"><h2>线索板</h2><div id="ct"></div></div><div id="npcs" class="panel"><h2>人物关系</h2><div id="nt"></div></div><div id="tl" class="panel"><h2 style="cursor:pointer" onclick="document.getElementById(\'chr\').classList.toggle(\'fold\')">▶ 大纪事</h2><div id="chr" class="chr-wrap fold"></div><h2 style="margin-top:16px">事件线</h2><div id="tt"></div></div><div id="chars" class="panel"><h2>角色状态</h2><div id="cc"></div></div><div id="todos" class="panel"><h2>待办事项</h2><div id="tlst"></div></div><div id="ts"></div><div id="drill" onclick="var e=event;if(e.target===this)closeDrill()"><div id="drillPane"><div id="drillHead"><span id="drillTitle"></span><button id="drillClose" onclick="closeDrill()">✕</button></div><div id="drillBody"></div></div></div><script src="panel.js"></script></body></html>'
+
+# Embed DATA for offline mode, then load panel.js
+embed = '<script>window.DATA=' + DATA + ';</script>'
+html = tmpl.replace('<script src="panel.js"></script>', embed + '<script src="panel.js"></script>')
 
 out = os.path.join(LOG, "panel.html")
 with open(out, 'w', encoding='utf-8') as f: f.write(html)

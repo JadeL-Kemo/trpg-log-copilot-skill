@@ -1,5 +1,30 @@
-// === Panel Renderer v1.7 ===
-document.addEventListener('DOMContentLoaded', function() {
+// === Panel Renderer v1.8 — pure JS, data from API or embedded ===
+(function(){if(window.DATA)init(DATA);else{fetch('api/data').then(function(r){return r.json()}).then(init).catch(function(){document.getElementById('dash').textContent='API unreachable — start serve.py'})}})();
+function init(DATA) {
+window.DATA = DATA;
+
+// --- Render dash ---
+var pc = DATA.chars.filter(function(c){return c.type==='pc'});
+var dp = [];
+for (var i=0;i<pc.length;i++){
+  var ch=pc[i], parts=[ch.name];
+  for(var k in ch.pools){var p=ch.pools[k]; parts.push(k.substr(0,4).toUpperCase()+' '+p.cur+'/'+p.max)}
+  if(ch.loc!=='-') parts.push(ch.loc);
+  if(ch.status!=='-') parts.push('['+ch.status+']');
+  dp.push(parts.join(' · '))
+}
+document.getElementById('dash').textContent = dp.join('  |  ')||'No PC data';
+
+// --- Render nav ---
+var tabs = [
+  {id:'clues',label:'线索'},{id:'npcs',label:'人物'},
+  {id:'tl',label:'时间线'},{id:'chars',label:'角色'},{id:'todos',label:'待办'}
+];
+var nav = document.querySelector('nav');
+nav.innerHTML = tabs.map(function(t,i){return '<button class=\"'+(i===0?'active':'')+'\" onclick=\"S(this,\\\"'+t.id+'\\\")\">'+t.label+'</button>'}).join('');
+
+// --- Render ts ---
+document.getElementById('ts').textContent = '更新于 '+new Date().toLocaleString('zh-CN')+' · v1.8';
 
 // Tab switching
 function S(btn, id) {
