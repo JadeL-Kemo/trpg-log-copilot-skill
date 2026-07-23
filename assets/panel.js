@@ -1,14 +1,16 @@
-// === Panel Renderer v1.8 — always prefer API, embedded DATA as fallback ===
+// === Panel Renderer v1.8 — embedded DATA first, API as live-update fallback ===
 (function(){
   function boot(D) { try { init(D); } catch(e) { bootFallback(e); } }
   function bootFallback(err) {
     var d = document.getElementById('dash');
-    if (d) d.textContent = 'Render error — check console';
-    if (window.DATA && window.DATA !== lastAttempt) { lastAttempt = window.DATA; try { init(window.DATA); return; } catch(e2) {} }
-    if (d) d.textContent = 'API unreachable — start serve.py and refresh';
+    if (d && window.DATA) { try { init(window.DATA); return; } catch(e2) {} }
+    if (d) d.textContent = 'Data unavailable';
   }
-  var lastAttempt = window.DATA;
-  fetch('api/data').then(function(r){ return r.json(); }).then(boot).catch(function(){ boot(window.DATA); });
+  // Priority: embedded (works everywhere) > API (live, localhost only)
+  if (window.DATA) { boot(window.DATA); return; }
+  fetch('api/data').then(function(r){ return r.json(); }).then(boot).catch(function(){
+    document.getElementById('dash').textContent = 'No data — run import_md.py or start serve.py';
+  });
 })();
 
 function init(DATA) {
@@ -58,7 +60,7 @@ function S(btn, id) {
 window.S = S;
 
 // Refresh
-function R() { location.reload(); }
+function R() { fetch('api/data').then(function(r){return r.json()}).then(function(d){window.DATA=d;renderAll()}).catch(function(){location.reload()}); }
 // Hash-based tab persistence
 (function(){
   var hash = location.hash.replace('#','');
