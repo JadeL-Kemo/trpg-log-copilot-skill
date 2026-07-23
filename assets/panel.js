@@ -122,6 +122,13 @@ if (dsh) {
 
 function vl(k) { return DATA.labels.verified[k] || k; }
 function cl(k) { return DATA.labels.confidence[k] || k; }
+function renderContent(text) {
+  if (!text) return '';
+  var m = text.match(/^img:(\S+\.(jpg|png|gif|webp|bmp|svg))\s*/i);
+  if (!m) return text;
+  var imgHtml = '<img src="images/' + m[1] + '" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid #2a3a5c;display:block;margin-bottom:4px" onerror="this.style.display=\'none\'" loading="lazy">';
+  return imgHtml + text.replace(/^img:\S+\s*/, '');
+}
 
 // Clue cards — compact: ID + badges on top, content truncated below
 try {
@@ -131,9 +138,10 @@ if (ct && DATA.clues) {
   for (var i = 0; i < DATA.clues.length; i++) {
     var c = DATA.clues[i];
     var cf = c.confidence || 'medium';
+    var ctText = (c.content||'').replace(/^img:\S+\s*/,'');
     h += '<div class="wiki-card" onclick="openRelated(\'' + c.id + '\')">' +
       '<div style="margin-bottom:2px">' + c.id + ' <span class="v-confirmed" style="font-size:10px;margin-right:4px">已证实</span><span class="c-' + cf + '">' + cl(cf) + '</span></div>' +
-      '<div class="wiki-body">' + c.content + '</div>' +
+      '<div class="wiki-body">' + ctText + '</div>' +
       '</div>';
   }
   ct.innerHTML = h;
@@ -590,7 +598,7 @@ function openRelated(id) {
   // Section 1: Header + detail
   h += '<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #2a3a5c">';
   h += '<div style="margin-bottom:4px"><b>' + clue.id + '</b> <span class="v-confirmed" style="font-size:10px;margin-right:3px">已证实</span><span class="c-' + cf + '">' + cl(cf) + '</span></div>';
-  h += '<div style="font-size:12px;color:#ccc;line-height:1.6;margin-bottom:4px">' + clue.content + '</div>';
+  h += '<div style="font-size:12px;color:#ccc;line-height:1.6;margin-bottom:4px">' + renderContent(clue.content) + '</div>';
   h += '<div style="font-size:11px;color:#888">来源: ' + clue.source + '</div>';
   h += '</div>';
   

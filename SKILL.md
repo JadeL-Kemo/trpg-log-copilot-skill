@@ -119,7 +119,7 @@ AI 追加一行表格，`import_md.py` 自动解析入库：
 | 列 | 问 | 值 |
 |------|------|------|
 | `id` | 编号 | CL-XXX |
-| `content` | 是什么 | 线索内容 |
+| `content` | 是什么 | 纯文本。图片引用用 `img:文件名.jpg 描述文字`（图存 `images/` 目录） |
 | `source` | 谁说的 | KP旁白 / 角色名 / 骰子 / 场外 |
 | `verified` | 证实了？ | `confirmed` / `pending` / `excluded` |
 | `confidence` | 多可靠？ | `high`(高置信) / `medium`(中置信) / `low`(低置信) / `none`(无置信) / `axiom`(铁律,需玩家确认) |
