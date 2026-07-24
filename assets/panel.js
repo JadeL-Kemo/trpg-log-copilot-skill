@@ -157,7 +157,7 @@ if (nt && DATA.npcs) {
   for (var i = 0; i < DATA.npcs.length; i++) {
     var n = DATA.npcs[i];
     var facts = JSON.parse(n.key_facts || '[]');
-    h += '<div class="wiki-card" onclick="openNpc(\'' + escAttr(n.name) + '\')">' +
+    h += '<div class="wiki-card" onclick="openNpc(\'' + escAttr(n.id) + '\')">' +
       '<div style="margin-bottom:2px"><b>' + n.name + '</b> <span style="font-size:10px;color:#888">' + n.role + '</span></div>' +
       '<div class="wiki-body">' + (facts.join('; ') || n.stance) + '</div>' +
       '</div>';
@@ -440,12 +440,29 @@ function openNpc(name) {
   // Decode HTML entities in case onClick encoded them
   name = name.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
   var npc = null;
-  // Search NPCs + PC characters
+  // Search by ID first, then exact name, then loose match
   var allChars = (DATA.npcs||[]).concat((DATA.chars||[]).filter(function(c){return c.type==='pc';}).map(function(c){
-    return {name:c.name,role:c.type==='pc'?'PC':'',stance:'',faction:'',key_facts:'[]',relationships:'[]'};
+    return {id:c.name,name:c.name,role:c.type==='pc'?'PC':'',stance:'',faction:'',key_facts:'[]',relationships:'[]'};
   }));
+  var npc = null;
+  // 1. ID match
   for (var i = 0; i < allChars.length; i++) {
+    if (allChars[i].id === name) { npc = allChars[i]; break; }
+  }
+  // 2. Exact name match
+  if (!npc) for (var i = 0; i < allChars.length; i++) {
     if (allChars[i].name === name) { npc = allChars[i]; break; }
+  }
+  // 3. Loose: strip parenthetical suffixes from both sides
+  if (!npc) {
+    var clean = name.replace(/\(.*?\)/g,'').trim();
+    for (var i = 0; i < allChars.length; i++) {
+      if (allChars[i].name.replace(/\(.*?\)/g,'').trim() === clean) { npc = allChars[i]; break; }
+    }
+  }
+  // 4. Substring fallback
+  if (!npc) for (var i = 0; i < allChars.length; i++) {
+    if (allChars[i].name.indexOf(name) >= 0) { npc = allChars[i]; break; }
   }
   if (!npc) return;
   var facts = JSON.parse(npc.key_facts || '[]');
