@@ -1,15 +1,14 @@
-// === Panel Renderer v1.8 — embedded DATA first, API as live-update fallback ===
+// === Panel Renderer v1.8 — API first, embedded DATA as offline fallback ===
 (function(){
   function boot(D) { try { init(D); } catch(e) { bootFallback(e); } }
   function bootFallback(err) {
     var d = document.getElementById('dash');
-    if (d && window.DATA) { try { init(window.DATA); return; } catch(e2) {} }
-    if (d) d.textContent = 'Data unavailable';
+    if (d && window.DATA) { try { init(window.DATA); return; } catch(e2) { if (d) d.textContent = 'Render error'; } }
+    if (d) d.textContent = 'Data unavailable — start serve.py and refresh';
   }
-  // Priority: embedded (works everywhere) > API (live, localhost only)
-  if (window.DATA) { boot(window.DATA); return; }
   fetch('api/data').then(function(r){ return r.json(); }).then(boot).catch(function(){
-    document.getElementById('dash').textContent = 'No data — run import_md.py or start serve.py';
+    if (window.DATA) boot(window.DATA);
+    else document.getElementById('dash').textContent = 'No data — run import_md.py or start serve.py';
   });
 })();
 
@@ -120,10 +119,13 @@ if (dsh) {
 // === Data rendering ===
 // (moved inside renderAll() called by init())
 
-function vl(k) { return DATA.labels.verified[k] || k; }
-function cl(k) { return DATA.labels.confidence[k] || k; }
+function vl(k) { return (window.DATA&&window.DATA.labels.verified[k]) || k; }
+function cl(k) { return (window.DATA&&window.DATA.labels.confidence[k]) || k; }
+function escAttr(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function renderContent(text) {
   if (!text) return '';
+  // Strip Markdown bold/italic
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
   var m = text.match(/^img:(\S+\.(jpg|png|gif|webp|bmp|svg))\s*/i);
   if (!m) return text;
   var imgHtml = '<img src="images/' + m[1] + '" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid #2a3a5c;display:block;margin-bottom:4px" onerror="this.style.display=\'none\'" loading="lazy">';
@@ -155,7 +157,7 @@ if (nt && DATA.npcs) {
   for (var i = 0; i < DATA.npcs.length; i++) {
     var n = DATA.npcs[i];
     var facts = JSON.parse(n.key_facts || '[]');
-    h += '<div class="wiki-card" onclick="openNpc(\'' + n.name + '\')">' +
+    h += '<div class="wiki-card" onclick="openNpc(\'' + escAttr(n.name) + '\')">' +
       '<div style="margin-bottom:2px"><b>' + n.name + '</b> <span style="font-size:10px;color:#888">' + n.role + '</span></div>' +
       '<div class="wiki-body">' + (facts.join('; ') || n.stance) + '</div>' +
       '</div>';
@@ -218,7 +220,7 @@ function openTimeline(idx) {
     h += '<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #1a2a30">';
     h += '<div style="font-size:11px;color:#888;margin-bottom:4px">参与者 (' + parts.length + ')</div>';
     for (var i = 0; i < parts.length; i++) {
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + parts[i] + '\')">' + parts[i] + '</span>';
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(parts[i]) + '\')">' + parts[i] + '</span>';
     }
     h += '</div>';
   }
@@ -368,7 +370,7 @@ function openChronicle(idx) {
     h += '<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #1a2a30">';
     h += '<div style="font-size:11px;color:#888;margin-bottom:4px">关联人物 (' + nps.length + ')</div>';
     for (var i = 0; i < nps.length; i++) {
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + nps[i] + '\')">' + nps[i] + '</span>';
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(nps[i]) + '\')">' + nps[i] + '</span>';
     }
     h += '</div>';
   }
@@ -428,15 +430,21 @@ function buildItem(it) {
     h += '<div style="font-size:11px;margin-top:4px"><span style="color:#ff9800;font-size:10px">被引用 </span>' + brIds.map(function(id){return '<span class="drill-chip ref" onclick="event.stopPropagation();openRelated(\''+id+'\')">'+id+'</span>';}).join('') + '</div>';
   }
   if (relatedNpcs.length) {
-    h += '<div style="font-size:11px;margin-top:4px"><span style="color:#e94560;font-size:10px">相关人物 </span>' + relatedNpcs.map(function(n){return '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\''+n+'\')">'+n+'</span>';}).join('') + '</div>';
+    h += '<div style="font-size:11px;margin-top:4px"><span style="color:#e94560;font-size:10px">相关人物 </span>' + relatedNpcs.map(function(n){return '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\''+escAttr(n)+'\')">'+n+'</span>';}).join('') + '</div>';
   }
   h += '</div></div>';
   return h;
 }
 function openNpc(name) {
+  // Decode HTML entities in case onClick encoded them
+  name = name.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
   var npc = null;
-  for (var i = 0; i < DATA.npcs.length; i++) {
-    if (DATA.npcs[i].name === name) { npc = DATA.npcs[i]; break; }
+  // Search NPCs + PC characters
+  var allChars = (DATA.npcs||[]).concat((DATA.chars||[]).filter(function(c){return c.type==='pc';}).map(function(c){
+    return {name:c.name,role:c.type==='pc'?'PC':'',stance:'',faction:'',key_facts:'[]',relationships:'[]'};
+  }));
+  for (var i = 0; i < allChars.length; i++) {
+    if (allChars[i].name === name) { npc = allChars[i]; break; }
   }
   if (!npc) return;
   var facts = JSON.parse(npc.key_facts || '[]');
@@ -484,17 +492,17 @@ function openNpc(name) {
     // Mutual (↔)
     for (var i = 0; i < mutualEdges.length; i++) {
       var r = mutualEdges[i];
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + r.npc_b + '\')">' + r.npc_b + ' (' + r.rel_type + ') ↔</span>';
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + r.npc_b + ' (' + r.rel_type + ') ↔</span>';
     }
     // Outgoing (→)
     for (var i = 0; i < singleOut.length; i++) {
       var r = singleOut[i];
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + r.npc_b + '\')">' + r.npc_b + ' (' + r.rel_type + ') →</span>';
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + r.npc_b + ' (' + r.rel_type + ') →</span>';
     }
     // Incoming (←)
     for (var i = 0; i < singleIn.length; i++) {
       var r = singleIn[i];
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + r.npc_a + '\')">' + r.npc_a + ' (' + r.rel_type + ') ←</span>';
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_a) + '\')">' + r.npc_a + ' (' + r.rel_type + ') ←</span>';
     }
     h += '</div>';
   }
@@ -613,7 +621,7 @@ function openRelated(id) {
     h += '<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #1a2a30">';
     h += '<div style="font-size:11px;color:#888;margin-bottom:4px">相关人物 (' + npcs.length + ')</div>';
     for (var i = 0; i < npcs.length; i++) {
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + npcs[i].name + '\')">' + npcs[i].name + '</span>';
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(npcs[i].name) + '\')">' + npcs[i].name + '</span>';
     }
     h += '</div>';
   }

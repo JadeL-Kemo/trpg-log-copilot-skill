@@ -188,7 +188,7 @@ if os.path.exists(tl_path):
     rows = parse_md_table(raw)
     # Validate event_date format
     import re as _re2
-    _date_ok = _re2.compile(r'^\d{4}(-\d{2}){0,2}(-[a-z])?$')
+    _date_ok = _re2.compile(r'^\d{4}(-\d{2}){0,2}(-[a-z]+)?$')
     _date_bad = ['当日', '现在', '近日', '三天前', '案发后', '约', '左右']
     for r in rows:
         ed = (r.get('event_date') or '').strip()
