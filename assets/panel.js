@@ -173,7 +173,7 @@ if (nt && DATA.npcs) {
   var h = '';
   for (var i = 0; i < DATA.npcs.length; i++) {
     var n = DATA.npcs[i];
-    var facts = JSON.parse(n.key_facts || '[]');
+    var facts = []; try { facts = JSON.parse(n.key_facts || '[]'); } catch(e) { if (typeof n.key_facts === 'string') facts = n.key_facts.split(/[,;，；]/).filter(Boolean).map(function(x){return x.trim();}); }
     h += '<div class="wiki-card" onclick="openNpc(\'' + escAttr(n.id) + '\')">' +
       '<div style="margin-bottom:2px"><b>' + n.name + '</b> <span style="font-size:10px;color:#888">' + n.role + '</span></div>' +
       '<div class="wiki-body">' + (facts.join('; ') || n.stance) + '</div>' +
@@ -482,9 +482,12 @@ function openNpc(name) {
     if (allChars[i].name.indexOf(name) >= 0) { npc = allChars[i]; break; }
   }
   if (!npc) return;
-  var facts = JSON.parse(npc.key_facts || '[]');
+  var facts = [];
+  try { facts = JSON.parse(npc.key_facts || '[]'); } catch(e) {
+    if (typeof npc.key_facts === 'string') facts = npc.key_facts.split(/[,;，；]/).filter(Boolean).map(function(x){return x.trim();});
+  }
   var h = '<div style="padding:4px">';
-  
+
   // Section 1: NPC detail
   h += '<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #2a3a5c">';
   h += '<div style="margin-bottom:4px"><b>' + npc.name + '</b> <span style="font-size:11px;color:#888">' + npc.role + '</span></div>';

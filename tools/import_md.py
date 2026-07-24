@@ -161,9 +161,16 @@ if os.path.exists(npc_path):
     n = 0
     for r in rows:
         if 'id' not in r or 'name' not in r: continue
+        # Clean NPC name: strip emoji + 🔴 prefixes
+        _name_clean = re.sub(r'[\U0001F300-\U0001F9FF\u2600-\u27BF\u2B50\u2764\u2728\u25CF]', '', r['name']).strip()
+        # Strip leading emoji-sequence markers like 🔴🔴🔴
+        _name_clean = re.sub(r'^[\ue000-\uf8ff\u2764\u2728\u25CF\U0001F000-\U0001FFFF]+', '', _name_clean).strip()
+        if not _name_clean: _name_clean = r['name']  # Fallback if all chars stripped
+        if _name_clean != r['name']:
+            print('  clean NPC name: "' + r['name'] + '" -> "' + _name_clean + '"')
         conn.execute(
             "INSERT OR REPLACE INTO npcs (id,name,role,stance,faction,key_facts,relationships) VALUES (?,?,?,?,?,?,?)",
-            (r['id'], r['name'], r.get('role',''), r.get('stance',''),
+            (r['id'], _name_clean, r.get('role',''), r.get('stance',''),
              r.get('faction',''),
              json.dumps(parse_clue_tags(r.get('key_facts','')), ensure_ascii=False),
              json.dumps(parse_clue_tags(r.get('relationships','')), ensure_ascii=False)))
