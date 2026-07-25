@@ -221,7 +221,14 @@ python tools/file_ops.py append-scene <文件> <场景ID> "<标题>" --time HH:M
 
 @config:
   sync.ini  [narrative] 配置叙事文件路径 → import_md.py 自动切场景入 narrative_chunks
-  改文件名只需改 sync.ini 一行，panel.js/serve.py 零硬编码
+  改文件名只需改 sync.ini 一行
+
+### 叙事检索（无需全量读取）
+```bash
+python tools/narrative_search.py <日志目录> scenes              # 列出所有场景
+python tools/narrative_search.py <日志目录> scene <场景ID>      # 提取指定场景
+python tools/narrative_search.py <日志目录> grep <关键词>       # 搜索（含上下文）
+```，panel.js/serve.py 零硬编码
 ```
 ```
 

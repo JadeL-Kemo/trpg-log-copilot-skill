@@ -524,23 +524,31 @@ function openNpc(name) {
   for (var k in seen) singleOut.push(seen[k]);
   
   var totalRels = mutualEdges.length + singleOut.length + singleIn.length;
+  // Build id->name map for display resolution
+  var idToName = {};
+  for (var j = 0; j < allChars.length; j++) { idToName[allChars[j].id] = allChars[j].name; }
+  // ... [existing ID/name match logic follows] ...
+
   if (totalRels) {
     h += '<div style="margin-top:4px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #1a2a30">';
     h += '<div style="font-size:11px;color:#888;margin-bottom:4px">关系 (' + totalRels + ')</div>';
     // Mutual (↔)
     for (var i = 0; i < mutualEdges.length; i++) {
       var r = mutualEdges[i];
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + r.npc_b + ' (' + r.rel_type + ') ↔</span>';
+      var displayB = idToName[r.npc_b] || r.npc_b;
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + displayB + ' (' + r.rel_type + ') ↔</span>';
     }
     // Outgoing (→)
     for (var i = 0; i < singleOut.length; i++) {
       var r = singleOut[i];
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + r.npc_b + ' (' + r.rel_type + ') →</span>';
+      var displayB = idToName[r.npc_b] || r.npc_b;
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + displayB + ' (' + r.rel_type + ') →</span>';
     }
     // Incoming (←)
     for (var i = 0; i < singleIn.length; i++) {
       var r = singleIn[i];
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_a) + '\')">' + r.npc_a + ' (' + r.rel_type + ') ←</span>';
+      var displayA = idToName[r.npc_a] || r.npc_a;
+      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_a) + '\')">' + displayA + ' (' + r.rel_type + ') ←</span>';
     }
     h += '</div>';
   }

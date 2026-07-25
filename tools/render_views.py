@@ -27,20 +27,21 @@ events = [dict(r) for r in conn.execute("SELECT event_time,event,participants,re
 chronicles = [dict(r) for r in conn.execute("SELECT event_date,event,participants,related_clues,notes FROM timeline_events WHERE category='chronicle' ORDER BY event_date")]
 relations = [dict(r) for r in conn.execute("SELECT id,npc_a,npc_b,rel_type,direction,source_ref FROM npc_relations ORDER BY npc_a,npc_b")]
 
-# Character state
+# Character state (shared utility, labels applied here)
+import sys, os.path as _osp
+_root = _osp.dirname(_osp.dirname(_osp.abspath(__file__)))
+sys.path.insert(0, _root)
+from scripts.state_utils import get_char_summary
+raw_chars = get_char_summary(DB)
 char_rows = []
-for ch in conn.execute("SELECT char_name,char_type,base_stats FROM char_base ORDER BY CASE char_type WHEN 'pc' THEN 0 END, char_name"):
-    base = json.loads(ch['base_stats']); totals = dict(base)
-    for d in conn.execute("SELECT deltas FROM char_state_log WHERE char_name=? ORDER BY seq", (ch['char_name'],)):
-        for k, v in json.loads(d['deltas']).items(): totals[k] = totals.get(k, 0) + v
-    last = conn.execute("SELECT loc_new,status_new FROM char_state_log WHERE char_name=? AND (loc_new IS NOT NULL OR status_new IS NOT NULL) ORDER BY seq DESC LIMIT 1", (ch['char_name'],)).fetchone()
+for ch in raw_chars:
     pools = {}
-    for k in sorted(base.keys()):
-        pools[labels['pool'].get(k, k)] = {"cur": totals.get(k, '?'), "max": base[k]}
+    for k, v in ch['pools'].items():
+        pools[labels['pool'].get(k, k)] = v
     char_rows.append({
-        "name": ch['char_name'], "type": ch['char_type'], "pools": pools,
-        "loc": last['loc_new'] if last and last['loc_new'] else '-',
-        "status": labels['status'].get(last['status_new'], last['status_new']) if last and last['status_new'] else '-'})
+        **ch, "pools": pools,
+        "status": labels['status'].get(ch['status'], ch['status'])
+    })
 
 # Todos
 todos = []
