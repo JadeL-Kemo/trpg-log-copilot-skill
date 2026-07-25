@@ -529,28 +529,40 @@ function openNpc(name) {
   for (var j = 0; j < allChars.length; j++) { idToName[allChars[j].id] = allChars[j].name; }
   // ... [existing ID/name match logic follows] ...
 
-  if (totalRels) {
+  // Unified relation chip builder — handles semicolon splitting, NPC-ID parsing, CL-filter, empty rel_type
+  function relChips(edges, dir) {
+    var html = '';
+    for (var i = 0; i < edges.length; i++) {
+      var raw = dir === 'in' ? edges[i].npc_a : edges[i].npc_b;
+      if (!raw) continue;
+      var relType = edges[i].rel_type || '';
+      // Split semicolons — each token is a separate chip
+      var tokens = raw.split(/;\s*/);
+      for (var t = 0; t < tokens.length; t++) {
+        var token = tokens[t].trim();
+        if (!token || /^CL-\d/i.test(token)) continue;
+        // Parse NPC-ID(remark) format
+        var m = token.match(/^(NPC-\d+)(?:（(.+?)）)?$/);
+        var npcId = m ? m[1] : token;
+        var remark = m ? (m[2] || '') : '';
+        var displayName = idToName[npcId] || npcId;
+        var label = remark || relType;
+        var chip = displayName;
+        if (label) chip += ' (' + label + ')';
+        chip += ' ' + dir;
+        html += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(npcId) + '\')">' + chip + '</span>';
+      }
+    }
+    return html;
+  }
+
+  var allChips = relChips(mutualEdges, '↔') + relChips(singleOut, '→') + relChips(singleIn, '←');
+  if (allChips) {
+    // Count actual chips
+    var chipCount = (allChips.match(/drill-chip/g) || []).length;
     h += '<div style="margin-top:4px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #1a2a30">';
-    h += '<div style="font-size:11px;color:#888;margin-bottom:4px">关系 (' + totalRels + ')</div>';
-    // Mutual (↔) — skip CL-xxx references
-    for (var i = 0; i < mutualEdges.length; i++) {
-      var r = mutualEdges[i];
-      if (!r.npc_b || /^CL-\d/i.test(r.npc_b)) continue;
-      var displayB = idToName[r.npc_b] || r.npc_b;
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + displayB + ' (' + r.rel_type + ') ↔</span>';
-    }
-    // Outgoing (→)
-    for (var i = 0; i < singleOut.length; i++) {
-      var r = singleOut[i];
-      var displayB = idToName[r.npc_b] || r.npc_b;
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + displayB + ' (' + r.rel_type + ') →</span>';
-    }
-    // Incoming (←)
-    for (var i = 0; i < singleIn.length; i++) {
-      var r = singleIn[i];
-      var displayA = idToName[r.npc_a] || r.npc_a;
-      h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_a) + '\')">' + displayA + ' (' + r.rel_type + ') ←</span>';
-    }
+    h += '<div style="font-size:11px;color:#888;margin-bottom:4px">关系 (' + chipCount + ')</div>';
+    h += allChips;
     h += '</div>';
   }
   
