@@ -36,6 +36,18 @@ function eventSortKey(t) {
   return '5000';
 }
 
+function vl(k) { return (window.DATA&&window.DATA.labels.verified[k]) || k; }
+function cl(k) { return (window.DATA&&window.DATA.labels.confidence[k]) || k; }
+function escAttr(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderContent(text) {
+  if (!text) return '';
+  // Strip Markdown bold/italic
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+  var m = text.match(/^img:(\S+\.(jpg|png|gif|webp|bmp|svg))\s*/i);
+  if (!m) return text;
+  var imgHtml = '<img src="images/' + m[1] + '" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid #2a3a5c;display:block;margin-bottom:4px" onerror="this.style.display=\'none\'" loading="lazy">';
+  return imgHtml + text.replace(/^img:\S+\s*/, '');
+}
 function renderAll() {
   var DATA = window.DATA;
   // Sort events by sort key
@@ -135,18 +147,6 @@ if (dsh) {
 // === Data rendering ===
 // (moved inside renderAll() called by init())
 
-function vl(k) { return (window.DATA&&window.DATA.labels.verified[k]) || k; }
-function cl(k) { return (window.DATA&&window.DATA.labels.confidence[k]) || k; }
-function escAttr(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function renderContent(text) {
-  if (!text) return '';
-  // Strip Markdown bold/italic
-  text = text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
-  var m = text.match(/^img:(\S+\.(jpg|png|gif|webp|bmp|svg))\s*/i);
-  if (!m) return text;
-  var imgHtml = '<img src="images/' + m[1] + '" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid #2a3a5c;display:block;margin-bottom:4px" onerror="this.style.display=\'none\'" loading="lazy">';
-  return imgHtml + text.replace(/^img:\S+\s*/, '');
-}
 
 // Clue cards — compact: ID + badges on top, content truncated below
 try {
@@ -532,9 +532,10 @@ function openNpc(name) {
   if (totalRels) {
     h += '<div style="margin-top:4px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #1a2a30">';
     h += '<div style="font-size:11px;color:#888;margin-bottom:4px">关系 (' + totalRels + ')</div>';
-    // Mutual (↔)
+    // Mutual (↔) — skip CL-xxx references
     for (var i = 0; i < mutualEdges.length; i++) {
       var r = mutualEdges[i];
+      if (!r.npc_b || /^CL-\d/i.test(r.npc_b)) continue;
       var displayB = idToName[r.npc_b] || r.npc_b;
       h += '<span class="drill-chip npc" onclick="event.stopPropagation();openNpc(\'' + escAttr(r.npc_b) + '\')">' + displayB + ' (' + r.rel_type + ') ↔</span>';
     }
