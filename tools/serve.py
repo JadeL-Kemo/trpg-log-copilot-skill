@@ -26,7 +26,7 @@ if not os.path.isdir(LOG):
     print("ERROR: {0} not found".format(LOG))
     sys.exit(1)
 
-os.chdir(LOG)
+LOG_DIR = os.path.abspath(LOG)  # mutable: /api/switch changes this at runtime
 
 # --- Port selection (stable, no creep) ---
 port_file = os.path.join(LOG, '.port')
@@ -68,6 +68,17 @@ last_req = time.time()
 lock = threading.Lock()
 
 class PanelHandler(http.server.SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+        """Serve static files from LOG_DIR, not cwd."""
+        path = path.split('?', 1)[0].split('#', 1)[0]
+        path = path.lstrip('/')
+        # Map to LOG_DIR
+        translated = os.path.join(LOG_DIR, path)
+        # Security: don't escape LOG_DIR
+        if os.path.commonpath([os.path.abspath(translated), LOG_DIR]) != LOG_DIR:
+            return translated  # harmless — will 404
+        return translated
+    
     def end_headers(self):
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         self.send_header('Pragma', 'no-cache')
@@ -75,10 +86,16 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
     
     def do_GET(self):
-        global last_req
+        global last_req, LOG_DIR
         with lock: last_req = time.time()
         if self.path == '/api/data':
             self._serve_data()
+            return
+        if self.path == '/api/dirs':
+            self._serve_dirs()
+            return
+        if self.path.startswith('/api/switch'):
+            self._serve_switch()
             return
         if self.path.startswith('/api/'):
             try:
@@ -88,7 +105,7 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
                 sid = urllib.parse.unquote(params.get('id', [''])[0])
                 q = urllib.parse.unquote(params.get('q', [''])[0])
                 text = ''
-                db = os.path.join('.', 'trpg_data.db')
+                db = os.path.join(LOG_DIR, 'trpg_data.db')
                 if os.path.exists(db):
                     conn = sqlite3.connect(db)
                     # 1. Exact scene_id match
@@ -117,16 +134,57 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
             return
         super().do_GET()
     
+    def _serve_dirs(self):
+        """List all TRPG log directories found under LOG_DIR's parent (workspace)."""
+        import json
+        # LOG_DIR is e.g. G:/.../跑团日志_Final, parent = workspace root
+        parent = os.path.dirname(LOG_DIR)
+        candidates = []
+        try:
+            for name in sorted(os.listdir(parent)):
+                full = os.path.join(parent, name)
+                if os.path.isdir(full) and os.path.exists(os.path.join(full, 'trpg_data.db')):
+                    # Relative display name from workspace
+                    active = os.path.abspath(full) == os.path.abspath(LOG_DIR)
+                    candidates.append({"name": name, "active": active})
+        except: pass
+        # Also include LOG_DIR itself if it was scanned from a parent
+        if not any(c['active'] for c in candidates):
+            candidates.append({"name": os.path.basename(LOG_DIR), "active": True})
+        self._json_resp({"dirs": candidates, "current": os.path.basename(LOG_DIR)})
+    
+    def _serve_switch(self):
+        """Switch LOG_DIR at runtime. Query: ?name=<dir>"""
+        global LOG_DIR
+        import urllib.parse, json
+        qs = urllib.parse.urlparse(self.path).query
+        params = urllib.parse.parse_qs(qs)
+        target = urllib.parse.unquote(params.get('name', [''])[0])
+        if not target:
+            self._json_resp({"error": "missing ?name= parameter"})
+            return
+        parent = os.path.dirname(LOG_DIR)
+        new_dir = os.path.join(parent, target)
+        # Support absolute paths too
+        if not os.path.isdir(new_dir) and os.path.isdir(target):
+            new_dir = target
+        if os.path.isdir(new_dir) and os.path.exists(os.path.join(new_dir, 'trpg_data.db')):
+            LOG_DIR = os.path.abspath(new_dir)
+            print("\n[serve] switched to: {0}".format(LOG_DIR))
+            self._json_resp({"switched": True, "current": target})
+        else:
+            self._json_resp({"error": "no trpg_data.db found in: " + target})
+    
     def _serve_data(self):
         """Return full panel data as JSON — pure JS rendering."""
         import json, sqlite3
-        db = os.path.join('.', 'trpg_data.db')
+        db = os.path.join(LOG_DIR, 'trpg_data.db')
         if not os.path.exists(db):
             self._json_resp({"error": "no db"})
             return
         conn = sqlite3.connect(db); conn.row_factory = sqlite3.Row
         data = {
-            "clues": [dict(r) for r in conn.execute("SELECT id,content,source,verified,confidence,tags,linked_ids FROM clues ORDER BY id")],
+            "clues": [dict(r) for r in conn.execute("SELECT id,content,source,confidence AS verified,confidence,tags,linked_ids FROM clues ORDER BY id")],
             "npcs": [dict(r) for r in conn.execute("SELECT id,name,role,stance,faction,key_facts,relationships FROM npcs ORDER BY id")],
             "events": [dict(r) for r in conn.execute("SELECT event_time,event,participants,related_clues,notes,scene_id,created_at FROM timeline_events WHERE category IS NULL OR category != 'chronicle' ORDER BY COALESCE(event_date,event_time), created_at, event_time")],
             "chronicles": [dict(r) for r in conn.execute("SELECT event_date,event,participants,related_clues,notes FROM timeline_events WHERE category='chronicle' ORDER BY event_date")],
@@ -146,7 +204,7 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
         import re as _re3
         todos = []
         valid_ids = {c['id'] for c in data['clues']}
-        todo_path = os.path.join('.', '06_待办.md')
+        todo_path = os.path.join(LOG_DIR, '06_待办.md')
         if os.path.exists(todo_path):
             for line in open(todo_path, encoding='utf-8').readlines():
                 line = line.strip()
@@ -178,7 +236,8 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
     
     def log_message(self, fmt, *args): pass
 
-httpd = socketserver.TCPServer(("", PORT), PanelHandler)
+httpd = socketserver.ThreadingTCPServer(("", PORT), PanelHandler)
+httpd.daemon_threads = True
 httpd.timeout = 1
 
 def idle_watcher():

@@ -4,7 +4,7 @@ description: >-
   TRPG 跑团助手：副官角色，车卡辅助、跑团日志归档、线索图谱查询、形势推演、
   场内外信息隔离（防超游/OOC/信息茧房）。支持多规则系统、Player/GM 双模式。
   MD表格写入→SQL自动同步，CLI精准检索（graph/events/search），零token大文件操作。
-  内建骰子投掷器、规则书解析器、HTML自动面板。触发：跑团、车卡、TRPG、CoC、DND、调查员等。
+  内建骰子投掷器、规则书解析器、HTML自动面板、角色卡引擎(cc.js)。触发：跑团、车卡、TRPG、CoC、DND、调查员等。
 ---
 
 # TRPG Log Copilot — 跑团副官
@@ -219,17 +219,12 @@ python tools/file_ops.py append-table <文件> --col id=CL-013 --col content="..
 python tools/file_ops.py replace-scene <文件> <场景ID> --text "<修正全文>"              # 替换场景块
 python tools/file_ops.py append-scene <文件> <场景ID> "<标题>" --time HH:MM             # 追加新场景
 
-@config:
-  sync.ini  [narrative] 配置叙事文件路径 → import_md.py 自动切场景入 narrative_chunks
-  改文件名只需改 sync.ini 一行
 
 ### 叙事检索（无需全量读取）
 ```bash
 python tools/narrative_search.py <日志目录> scenes              # 列出所有场景
 python tools/narrative_search.py <日志目录> scene <场景ID>      # 提取指定场景
 python tools/narrative_search.py <日志目录> grep <关键词>       # 搜索（含上下文）
-```，panel.js/serve.py 零硬编码
-```
 ```
 
 ### 本地面板（localhost HTTP + 自动打开浏览器）
@@ -244,6 +239,8 @@ python tools/serve.py <日志目录> --port 9999 # 指定端口（覆盖 .port�
 AI 有打开网页能力时直接用 `preview_url(http://localhost:{port}/panel.html)` 帮用户打开，无需记地址。
 刷新按钮和下拉刷新仅在 localhost 模式下可靠。
 **日志原文 API**：`/api/scene?id=S02_R01` 返回 `narrative_chunks` 中该场景的原始日志段落（SQL 存储，非文件读取）。
+
+**角色卡组件**：`cc.js` + `cc.css`（Character Card v2.1）可嵌入任意页面，支持 PC/NPC/MONSTER 三标签 + Tile/Card/Sheet 三视图。独立于面板运行，通过 `window.DATA` 注入数据。
 
 ---
 

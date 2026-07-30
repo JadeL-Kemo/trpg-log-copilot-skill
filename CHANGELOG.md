@@ -4,6 +4,77 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.8.8] — 2026-07-30
+
+### Added
+
+- **Character Card (cc.js + cc.css)** — 独立角色卡引擎 v2.1，PC/NPC/MONSTER 三标签 + Tile/Card/Sheet 三视图
+- **关系类型清洗** — `cleanRelType()` 自动剥离 NPC 名，支持多逗号分段（"李锐光，导师，oneway" → "导师"）
+- **线索引用描述** — Card + Sheet 视图线索引用显示 `CL-XXX: 描述` 格式
+
+### Fixed
+
+- NPC 关系类型混入 NPC 名字（如 "玛莎，女友同学" → "女友同学"）
+- 线索引用只显示裸 ID，不显示描述文本
+- `build_release_zips.py` 硬编码 Token 替换为 `GITHUB_TOKEN` 环境变量
+
+---
+
+## [1.8.7] — 2026-07-29
+
+### Fixed
+
+- **P0-1** — 删除 `db_manager.py:27` `enable_load_extension` 调用（跨平台崩溃）
+- **P0-2** — 统一三套 schema：clues 表 `confidence`/`verified` 列名对齐
+- **P0-3** — 修复 `serve.py` 查询不存在 `verified` 列导致 `/api/data` 崩溃
+- **P1-1** — 版本号：README `1.7.0` → `1.8.7`
+- **P1-2** — `.gitignore` 修复混合编码（前半 UTF-8 + 后半 UTF-16 LE）
+- **P2-1** — `SKILL.md` 修复空代码块和 `@config:` 伪 YAML 语法
+
+### Added
+
+- **图片自动检测** — `import_md.py` 扫描 `photo/` 和 `images/` 目录，关键词匹配自动链接图片到线索（`img:` 前缀）
+- **panel.js 图片双路径回退** — `photo/` → `images/` onerror 自动切换
+
+---
+
+## [1.8.6] — 2026-07-28
+
+### Fixed
+
+- OpenNPC 4 级匹配：ID → exact → strip paren → substring
+- `key_facts` JSON 解析失败时回退到逗号分割
+- Timeline 事件排序 key：`eventSortKey()` 替代 `ORDER BY event_time`
+
+---
+
+## [1.8.5] — 2026-07-27
+
+### Added
+
+- `state_utils.py` 共享模块 — 消除 3 处重复 HP/status 计算
+- `verified` 字段恢复：confirmed / pending / excluded 三态
+
+### Changed
+
+- `renderAll()` API-first：`fetch('api/data')` 优先，`window.DATA` 嵌入数据作为离线回退
+
+---
+
+## [1.8.4] — 2026-07-26
+
+### Added
+
+- `npc_relations` 边表 + `relations` CLI + JS 渲染 ↔/→/← 关系方向
+- Todos 在 `/api/data` 从 `06_待办.md` 实时解析（无需 SQL 表）
+
+### Fixed
+
+- 全局作用域：`cl`/`vl`/`renderContent`/`escAttr` 移出闭包
+- 导航按钮 onclick → `data-panel` + `addEventListener`
+
+---
+
 ## [1.8.3] — 2026-07-23
 
 ### Added

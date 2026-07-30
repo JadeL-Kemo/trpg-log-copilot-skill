@@ -146,6 +146,49 @@ if os.path.exists(clue_path):
 else:
     print("No 01_线索.md")
 
+# --- Image auto-link: scan photo/ images/ dirs, match to clues by keyword ---
+def _scan_images(log_dir):
+    """Scan photo/ and images/ dirs for image files, return {filename: full_path}."""
+    result = {}
+    for d in ('photo', 'images'):
+        dp = os.path.join(log_dir, d)
+        if not os.path.isdir(dp): continue
+        for f in os.listdir(dp):
+            ext = os.path.splitext(f)[1].lower()
+            if ext in ('.jpg','.jpeg','.png','.gif','.webp','.bmp','.svg'):
+                result[f] = os.path.join(dp, f)  # filename only, relative to serve.py CWD
+    return result
+
+def _match_image_to_clue(img_name, clue_content):
+    """Heuristic: split image name into keywords, count matches in clue content."""
+    name_no_ext = os.path.splitext(img_name)[0]
+    # Split on Chinese boundary or common separators
+    keywords = [k for k in re.split(r'[的之与和及或，,、\s._\-（）()\[\]【】]+', name_no_ext) if len(k) >= 2]
+    if not keywords: return 0
+    hits = sum(1 for kw in keywords if kw in clue_content)
+    return hits / len(keywords)
+
+images = _scan_images(LOG)
+if images:
+    clue_rows = conn.execute("SELECT id,content FROM clues").fetchall()
+    matched = set()
+    for img_name in images:
+        best_id, best_score = None, 0
+        for cid, ccontent in clue_rows:
+            if cid in matched: continue
+            s = _match_image_to_clue(img_name, ccontent)
+            if s > best_score:
+                best_score, best_id = s, cid
+        if best_id and best_score >= 0.5:
+            new_content = "img:{0} {1}".format(img_name, conn.execute(
+                "SELECT content FROM clues WHERE id=?", (best_id,)).fetchone()[0])
+            conn.execute("UPDATE clues SET content=? WHERE id=?", (new_content, best_id))
+            matched.add(best_id)
+            print("  img linked: {0} → {1} (score {2:.0%})".format(img_name, best_id, best_score))
+        else:
+            print("  img orphan: {0} — no clue matched".format(img_name))
+    print("Images: {0} files, {1} linked".format(len(images), len(matched)))
+
 # 02_人物.md
 npc_path = _path('02_npcs')
 if os.path.exists(npc_path):

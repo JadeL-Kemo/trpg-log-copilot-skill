@@ -36,8 +36,8 @@ function eventSortKey(t) {
   return '5000';
 }
 
-function vl(k) { return (window.DATA&&window.DATA.labels.verified[k]) || k; }
-function cl(k) { return (window.DATA&&window.DATA.labels.confidence[k]) || k; }
+function vl(k) { return (window.DATA&&(window.DATA.labels.verified[k]||window.DATA.labels.confidence[k])) || k; }
+function cl(k) { return (window.DATA&&(window.DATA.labels.confidence[k]||window.DATA.labels.verified[k])) || k; }
 function escAttr(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function renderContent(text) {
   if (!text) return '';
@@ -45,9 +45,248 @@ function renderContent(text) {
   text = text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
   var m = text.match(/^img:(\S+\.(jpg|png|gif|webp|bmp|svg))\s*/i);
   if (!m) return text;
-  var imgHtml = '<img src="images/' + m[1] + '" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid #2a3a5c;display:block;margin-bottom:4px" onerror="this.style.display=\'none\'" loading="lazy">';
+  var imgHtml = '<img src="photo/' + encodeURI(m[1]) + '" class="clue-thumb" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid #2a3a5c;display:block;margin-bottom:4px" onclick="event.stopPropagation();openLightbox(this.src)" onerror="this.style.display=\'none\'" loading="lazy">';
   return imgHtml + text.replace(/^img:\S+\s*/, '');
 }
+function getPage() {
+  var m = location.search.match(/page=(\d+)/);
+  return m ? Math.max(1, parseInt(m[1])) : 1;
+}
+function goPage(n, total) {
+  if (n < 1 || n > total) return;
+  var params = new URLSearchParams(location.search);
+  if (n <= 1) params.delete('page'); else params.set('page', String(n));
+  var qs = params.toString();
+  history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+  renderCluesPage();
+  document.getElementById('ct').scrollIntoView({behavior:'smooth'});
+}
+function renderCluesPage() {
+  var ct = document.getElementById('ct');
+  if (!ct || !window.DATA || !window.DATA.clues) return;
+  var DATA = window.DATA;
+  var PER = 20;
+  var page = getPage();
+  var total = Math.ceil(DATA.clues.length / PER);
+  page = Math.min(page, total);
+  var start = (page - 1) * PER;
+  var end = Math.min(start + PER, DATA.clues.length);
+  var slice = DATA.clues.slice(start, end);
+  var h = '';
+  for (var i = 0; i < slice.length; i++) {
+    var c = slice[i];
+    var cf = c.confidence || 'medium';
+    var vf = c.verified || 'confirmed';
+    var ctText = (c.content||'').replace(/^img:\S+\s*/,'');
+    var hasImg = /^img:\S+\.(jpg|png|gif|webp|bmp|svg)\s*/i.test(c.content||'');
+    h += '<div class="wiki-card" onclick="openRelated(\'' + c.id + '\')">' +
+      '<div style="margin-bottom:2px">' + c.id + ' <span class="v-' + vf + '" style="font-size:10px;margin-right:4px">' + vl(vf) + '</span><span class="c-' + cf + '">' + cl(cf) + '</span>' + (hasImg ? ' <span style="font-size:10px;color:#5eaad4">[📷]</span>' : '') + '</div>' +
+      '<div class="wiki-body">' + ctText + '</div>' +
+      '</div>';
+  }
+  var pgn = [];
+  var ds = 'style="background:rgba(94,234,212,.1);border:1px solid rgba(94,234,212,.3);color:#5eead4;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px"';
+  var da = 'style="opacity:.3;cursor:not-allowed;background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.15);color:#5eead4;padding:2px 8px;border-radius:4px;font-size:11px"';
+  pgn.push('<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:12px;padding:8px 0;border-top:1px solid rgba(94,234,212,.15)">');
+  pgn.push('<span style="font-size:11px;color:#888;margin-right:8px">' + DATA.clues.length + '\u6761 \u00b7 ' + total + '\u9875</span>');
+  pgn.push('<button onclick="goPage(' + (page-1) + ',' + total + ')" ' + (page<=1?'disabled ':'') + (page<=1?da:ds) + '>\u25C0</button>');
+  var pStart = Math.max(1, page - 3);
+  var pEnd = Math.min(total, page + 3);
+  if (pStart > 1) pgn.push('<span style="color:#888;font-size:11px">1\u2026</span>');
+  for (var p = pStart; p <= pEnd; p++) {
+    var isA = p === page ? 'background:#5eead4;color:#0a0a1a;font-weight:700;border:1px solid #5eead4' : 'background:rgba(94,234,212,.05);color:#5eead4;border:1px solid rgba(94,234,212,.3)';
+    pgn.push('<button onclick="goPage(' + p + ',' + total + ')" style="' + isA + ';padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px;min-width:24px">' + p + '</button>');
+  }
+  if (pEnd < total) pgn.push('<span style="color:#888;font-size:11px">\u2026' + total + '</span>');
+  pgn.push('<button onclick="goPage(' + (page+1) + ',' + total + ')" ' + (page>=total?'disabled ':'') + (page>=total?da:ds) + '>\u25B6</button>');
+  pgn.push('<span style="margin-left:8px;display:inline-flex;align-items:center;gap:2px"><input id="pj" type="number" min="1" max="' + total + '" value="' + page + '" style="width:40px;background:#1a1a2e;border:1px solid rgba(94,234,212,.3);color:#5eead4;padding:2px 4px;border-radius:4px;font-size:11px;text-align:center" onchange="var v=parseInt(this.value);if(v>=1&&v<=' + total + ')goPage(v,' + total + ')"><span style="font-size:10px;color:#888">/' + total + '</span></span>');
+  pgn.push('</div>');
+  ct.innerHTML = h + pgn.join('');
+}
+
+// --- Pagination helpers (shared) ---
+function _par(name) {
+  var m = location.search.match(new RegExp(name + '=(\\d+)'));
+  return m ? Math.max(1, parseInt(m[1])) : 1;
+}
+function _url(name, n) {
+  var params = new URLSearchParams(location.search);
+  if (n <= 1) params.delete(name); else params.set(name, String(n));
+  var qs = params.toString();
+  history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+}
+function _pgn(page, total, itemCount, fnName, pn) {
+  var pgn = [];
+  var ds = 'style="background:rgba(94,234,212,.1);border:1px solid rgba(94,234,212,.3);color:#5eead4;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px"';
+  var da = 'style="opacity:.3;cursor:not-allowed;background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.15);color:#5eead4;padding:2px 8px;border-radius:4px;font-size:11px"';
+  pgn.push('<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:12px;padding:8px 0;border-top:1px solid rgba(94,234,212,.15)">');
+  pgn.push('<span style="font-size:11px;color:#888;margin-right:8px">' + itemCount + '\u6761 \u00b7 ' + total + '\u9875</span>');
+  pgn.push('<button onclick="' + fnName + '(' + (page-1) + ')" ' + (page<=1?'disabled ':'') + (page<=1?da:ds) + '>\u25C0</button>');
+  var a = Math.max(1, page - 3), b = Math.min(total, page + 3);
+  if (a > 1) pgn.push('<span style="color:#888;font-size:11px">1\u2026</span>');
+  for (var p = a; p <= b; p++) {
+    var s = p === page ? 'background:#5eead4;color:#0a0a1a;font-weight:700;border:1px solid #5eead4' : 'background:rgba(94,234,212,.05);color:#5eead4;border:1px solid rgba(94,234,212,.3)';
+    pgn.push('<button onclick="' + fnName + '(' + p + ')" style="' + s + ';padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px;min-width:24px">' + p + '</button>');
+  }
+  if (b < total) pgn.push('<span style="color:#888;font-size:11px">\u2026' + total + '</span>');
+  pgn.push('<button onclick="' + fnName + '(' + (page+1) + ')" ' + (page>=total?'disabled ':'') + (page>=total?da:ds) + '>\u25B6</button>');
+  pgn.push('<span style="margin-left:8px;display:inline-flex;align-items:center;gap:2px"><input id="pj_' + pn + '" type="number" min="1" max="' + total + '" value="' + page + '" style="width:40px;background:#1a1a2e;border:1px solid rgba(94,234,212,.3);color:#5eead4;padding:2px 4px;border-radius:4px;font-size:11px;text-align:center" onchange="var v=parseInt(this.value);if(v>=1&&v<=' + total + ')' + fnName + '(v)"><span style="font-size:10px;color:#888">/' + total + '</span></span>');
+  pgn.push('</div>');
+  return pgn.join('');
+}
+
+// --- NPC paginated renderer ---
+function renderNpcsPage(pg) {
+  if (pg === undefined) pg = _par('pnpc');
+  var ct = document.getElementById('nt'), DATA = window.DATA;
+  if (!ct || !DATA||!DATA.npcs||!DATA.npcs.length) return;
+  var items = DATA.npcs, PER = 20;
+  var total = Math.ceil(items.length / PER);
+  pg = Math.min(Math.max(1, pg), total);
+  var start = (pg-1)*PER, end = Math.min(start+PER, items.length);
+  var h = '';
+  for (var i = start; i < end; i++) {
+    var n = items[i];
+    var facts = []; try { facts = JSON.parse(n.key_facts || '[]'); } catch(e) { if (typeof n.key_facts === 'string') facts = n.key_facts.split(/[,;，；]/).filter(Boolean).map(function(x){return x.trim();}); }
+    h += '<div class="wiki-card" onclick="openNpc(\'' + escAttr(n.id) + '\')">' +
+      '<div style="margin-bottom:2px"><b>' + n.name + '</b> <span style="font-size:10px;color:#888">' + n.role + '</span></div>' +
+      '<div class="wiki-body">' + (facts.join('; ') || n.stance) + '</div>' +
+      '</div>';
+  }
+  ct.innerHTML = h + _pgn(pg, total, items.length, 'goNpcPage', 'pnpc');
+}
+function goNpcPage(n) {
+  var items = (window.DATA||{}).npcs||[], total = Math.ceil(items.length / 20);
+  if (n < 1 || n > total) return;
+  _url('pnpc', n); renderNpcsPage(n);
+  var el = document.getElementById('nt'); if (el) el.scrollIntoView({behavior:'smooth'});
+}
+
+// --- Chronicle paginated renderer ---
+function renderChroniclesPage(pg, ct) {
+  if (pg === undefined) pg = _par('pchr');
+  if (!ct) ct = document.getElementById('chrModalBody') || document.getElementById('chr');
+  var DATA = window.DATA;
+  if (!ct || !DATA||!DATA.chronicles||!DATA.chronicles.length) return;
+  var items = DATA.chronicles, PER = 20;
+  var total = Math.ceil(items.length / PER);
+  pg = Math.min(Math.max(1, pg), total);
+  var start = (pg-1)*PER, end = Math.min(start+PER, items.length);
+  var h = '';
+  for (var i = start; i < end; i++) {
+    var c = items[i];
+    h += '<div class="chr-item"><div class="chr-dot"></div><div class="chr-card wiki-card" onclick="openChronicle(\'' + i + '\')"><div class="chr-date">' + c.event_date + '</div><div class="chr-title wiki-body">' + c.event + '</div></div></div>';
+  }
+  ct.innerHTML = h + _pgn(pg, total, items.length, 'goChrPage', 'pchr');
+}
+function goChrPage(n) {
+  var items = (window.DATA||{}).chronicles||[], total = Math.ceil(items.length / 20);
+  if (n < 1 || n > total) return;
+  _url('pchr', n);
+  var activeCt = document.getElementById('chrModalBody') && document.getElementById('chrModal').classList.contains('on') ? document.getElementById('chrModalBody') : document.getElementById('chr');
+  renderChroniclesPage(n, activeCt);
+  if (activeCt && activeCt.id !== 'chrModalBody') activeCt.scrollIntoView({behavior:'smooth'});
+}
+function openChronicleModal() {
+  var modal = document.getElementById('chrModal');
+  if (!modal || !window.DATA || !window.DATA.chronicles) return;
+  modal.classList.add('on');
+  renderChroniclesPage(_par('pchr'), document.getElementById('chrModalBody'));
+  document.body.style.overflow = 'hidden';
+}
+function closeChronicleModal() {
+  var modal = document.getElementById('chrModal');
+  if (modal) modal.classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+// --- Timeline/Events paginated renderer ---
+function renderEventsPage(pg) {
+  if (pg === undefined) pg = _par('pevent');
+  var ct = document.getElementById('tt'), DATA = window.DATA;
+  if (!ct || !DATA||!DATA.events||!DATA.events.length) return;
+  var items = DATA.events, PER = 20;
+  var total = Math.ceil(items.length / PER);
+  pg = Math.min(Math.max(1, pg), total);
+  var start = (pg-1)*PER, end = Math.min(start+PER, items.length);
+  var h = '';
+  for (var i = start; i < end; i++) {
+    var e = items[i];
+    var refs = JSON.parse(e.related_clues || '[]');
+    var refText = refs.length ? ' \u00b7 ' + refs.join(' ') : '';
+    h += '<div class="wiki-card" onclick="openTimeline(' + i + ')">' +
+      '<div style="margin-bottom:2px"><b>' + e.event_time + '</b></div>' +
+      '<div class="wiki-body">' + e.event + refText + '</div>' +
+      '</div>';
+  }
+  ct.innerHTML = h + _pgn(pg, total, items.length, 'goEventPage', 'pevent');
+}
+function goEventPage(n) {
+  var items = (window.DATA||{}).events||[], total = Math.ceil(items.length / 20);
+  if (n < 1 || n > total) return;
+  _url('pevent', n); renderEventsPage(n);
+  var el = document.getElementById('tt'); if (el) el.scrollIntoView({behavior:'smooth'});
+}
+
+// --- Character cards paginated renderer ---
+function renderCharsPage(pg) {
+  if (pg === undefined) pg = _par('pchar');
+  var ct = document.getElementById('cc'), DATA = window.DATA;
+  if (!ct || !DATA||!DATA.chars||!DATA.chars.length) return;
+  var items = DATA.chars, PER = 20;
+  var total = Math.ceil(items.length / PER);
+  pg = Math.min(Math.max(1, pg), total);
+  var start = (pg-1)*PER, end = Math.min(start+PER, items.length);
+  var h = '';
+  for (var i = start; i < end; i++) {
+    var c = items[i];
+    var t = c.type === 'pc' ? 'PC' : 'NPC';
+    var pools = [];
+    var keys = Object.keys(c.pools);
+    for (var j = 0; j < keys.length; j++) {
+      var k = keys[j], v = c.pools[k];
+      pools.push(k + ' ' + v.cur + '/' + v.max);
+    }
+    h += '<div class="wiki-card" onclick="openChar(' + i + ')">' +
+      '<div style="margin-bottom:2px"><b>' + c.name + '</b> <span class="tag-' + (c.type === 'pc' ? 'pc' : 'npc') + '">' + t + '</span></div>' +
+      '<div class="wiki-body">' + pools.join(' \u00b7 ') + '</div>' +
+      '</div>';
+  }
+  ct.innerHTML = h + _pgn(pg, total, items.length, 'goCharPage', 'pchar');
+}
+function goCharPage(n) {
+  var items = (window.DATA||{}).chars||[], total = Math.ceil(items.length / 20);
+  if (n < 1 || n > total) return;
+  _url('pchar', n); renderCharsPage(n);
+  var el = document.getElementById('cc'); if (el) el.scrollIntoView({behavior:'smooth'});
+}
+
+// --- Todo cards paginated renderer ---
+function renderTodosPage(pg) {
+  if (pg === undefined) pg = _par('ptodo');
+  var ct = document.getElementById('tlst'), DATA = window.DATA;
+  if (!ct || !DATA||!DATA.todos||!DATA.todos.length) return;
+  var items = DATA.todos, PER = 20;
+  var total = Math.ceil(items.length / PER);
+  pg = Math.min(Math.max(1, pg), total);
+  var start = (pg-1)*PER, end = Math.min(start+PER, items.length);
+  var h = '';
+  for (var i = start; i < end; i++) {
+    var t = items[i];
+    var reasonEsc = (t.reason || '').replace(/'/g, "\\'");
+    h += '<div class="wiki-card" onclick="openTodo(' + i + ",'" + reasonEsc + "'" + ')">' +
+      '<div class="wiki-body">' + t.priority + ' ' + t.task + '</div>' +
+      '</div>';
+  }
+  ct.innerHTML = h + _pgn(pg, total, items.length, 'goTodoPage', 'ptodo');
+}
+function goTodoPage(n) {
+  var items = (window.DATA||{}).todos||[], total = Math.ceil(items.length / 20);
+  if (n < 1 || n > total) return;
+  _url('ptodo', n); renderTodosPage(n);
+  var el = document.getElementById('tlst'); if (el) el.scrollIntoView({behavior:'smooth'});
+}
+
 function renderAll() {
   var DATA = window.DATA;
   // Sort events by sort key
@@ -73,6 +312,34 @@ var tabs = [
 var nav = document.querySelector('nav');
 nav.innerHTML = tabs.map(function(t,i){return '<button class="'+(i===0?'active':'')+'" data-panel="'+t.id+'">'+t.label+'</button>'}).join('');
 nav.querySelectorAll('button').forEach(function(btn){ btn.addEventListener('click',function(){ S(this,this.dataset.panel); }); });
+
+// --- Session switcher ---
+(function(){
+  var dd = document.createElement('div');
+  dd.style.cssText = 'margin-left:auto;display:none;align-items:center;padding:0 8px';
+  dd.innerHTML = '<select id="ss" style="background:#1a1a2e;color:#5eead4;border:1px solid #5eead4;padding:3px 6px;border-radius:4px;font-size:11px;cursor:pointer;max-width:140px" onchange="switchSession(this.value)"><option>...</option></select>';
+  nav.appendChild(dd);
+  fetch('api/dirs').then(function(r){return r.json()}).then(function(d){
+    var s = document.getElementById('ss'); if(!s) return;
+    s.innerHTML = (d.dirs||[]).map(function(x){return '<option value="'+x.name+'"'+(x.active?' selected':'')+'>'+x.name+'</option>';}).join('');
+  }).catch(function(){});
+})();
+function switchSession(name){
+  if(!name) return;
+  fetch('api/switch?name='+encodeURIComponent(name)).then(function(r){return r.json()}).then(function(d){
+    if(d.switched) location.reload();
+    else alert(d.error||'Switch failed');
+  }).catch(function(){location.reload();});
+}
+
+// --- Chronicle modal button ---
+(function(){
+  var b = document.createElement('button');
+  b.style.cssText = 'background:#1a3a5c;color:#6ab;border:1px solid #3a5a7c;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;margin-left:4px;flex-shrink:0';
+  b.textContent = '大事记';
+  b.onclick = openChronicleModal;
+  nav.appendChild(b);
+})();
 
 // --- Render ts ---
 document.getElementById('ts').textContent = '更新于 '+new Date().toLocaleString('zh-CN')+' · v1.8';
@@ -148,71 +415,14 @@ if (dsh) {
 // (moved inside renderAll() called by init())
 
 
-// Clue cards — compact: ID + badges on top, content truncated below
-try {
-var ct = document.getElementById('ct');
-if (ct && DATA.clues) {
-  var h = '';
-  for (var i = 0; i < DATA.clues.length; i++) {
-    var c = DATA.clues[i];
-    var cf = c.confidence || 'medium';
-    var vf = c.verified || 'confirmed';
-    var ctText = (c.content||'').replace(/^img:\S+\s*/,'');
-    h += '<div class="wiki-card" onclick="openRelated(\'' + c.id + '\')">' +
-      '<div style="margin-bottom:2px">' + c.id + ' <span class="v-' + vf + '" style="font-size:10px;margin-right:4px">' + vl(vf) + '</span><span class="c-' + cf + '">' + cl(cf) + '</span></div>' +
-      '<div class="wiki-body">' + ctText + '</div>' +
-      '</div>';
-  }
-  ct.innerHTML = h;
-}
-} catch(e) { if (ct) ct.innerHTML = '<div style="color:#e94560">Clue render error</div>'; }
+// Clue cards — compact, paginated 20/page with page= URL persistence
+try { renderCluesPage(); } catch(e) { var ct = document.getElementById('ct'); if (ct) ct.innerHTML = '<div style="color:#e94560">Clue render error</div>'; }
 
-// NPC cards
-var nt = document.getElementById('nt');
-if (nt && DATA.npcs) {
-  var h = '';
-  for (var i = 0; i < DATA.npcs.length; i++) {
-    var n = DATA.npcs[i];
-    var facts = []; try { facts = JSON.parse(n.key_facts || '[]'); } catch(e) { if (typeof n.key_facts === 'string') facts = n.key_facts.split(/[,;，；]/).filter(Boolean).map(function(x){return x.trim();}); }
-    h += '<div class="wiki-card" onclick="openNpc(\'' + escAttr(n.id) + '\')">' +
-      '<div style="margin-bottom:2px"><b>' + n.name + '</b> <span style="font-size:10px;color:#888">' + n.role + '</span></div>' +
-      '<div class="wiki-body">' + (facts.join('; ') || n.stance) + '</div>' +
-      '</div>';
-  }
-  nt.innerHTML = h;
-}
+// NPC cards — paginated 20/page with ?pnpc= URL persistence
+try { renderNpcsPage(); } catch(e) { var nt = document.getElementById('nt'); if (nt) nt.innerHTML = '<div style="color:#e94560">NPC render error</div>'; }
 
-// Chronicle timeline — special rendering
-var chDiv = document.getElementById('chr');
-if (chDiv && DATA.chronicles && DATA.chronicles.length) {
-  var h = '';
-  for (var i = 0; i < DATA.chronicles.length; i++) {
-    var c = DATA.chronicles[i];
-    var nps = JSON.parse(c.participants || '[]');
-    var cls = JSON.parse(c.related_clues || '[]');
-    var npTags = nps.map(function(n){return '<span class="tag-npc">'+n+'</span>';}).join(' ');
-    var clTags = cls.map(function(id){return '<span class="drill-chip link" onclick="event.stopPropagation();openRelated(\''+id+'\')">'+id+'</span>';}).join('');
-    h += '<div class="chr-item"><div class="chr-dot"></div><div class="chr-card wiki-card" onclick="openChronicle(\''+i+'\')"><div class="chr-date">'+c.event_date+'</div><div class="chr-title wiki-body">'+c.event+'</div></div></div>';
-  }
-  chDiv.innerHTML = h;
-}
-
-// Timeline cards
-var tt = document.getElementById('tt');
-if (tt && DATA.events) {
-  var h = '';
-  for (var i = 0; i < DATA.events.length; i++) {
-    var e = DATA.events[i];
-    var parts = JSON.parse(e.participants || '[]');
-    var refs = JSON.parse(e.related_clues || '[]');
-    var refText = refs.length ? ' · ' + refs.join(' ') : '';
-    h += '<div class="wiki-card" onclick="openTimeline(' + i + ')">' +
-      '<div style="margin-bottom:2px"><b>' + e.event_time + '</b></div>' +
-      '<div class="wiki-body">' + e.event + refText + '</div>' +
-      '</div>';
-  }
-  tt.innerHTML = h;
-}
+// Timeline — paginated 20/page with ?pevent= URL persistence
+try { renderEventsPage(); } catch(e) { var tt = document.getElementById('tt'); if (tt) tt.innerHTML = '<div style="color:#e94560">Event render error</div>'; }
 function openTimeline(idx) {
   var e = DATA.events[idx];
   if (!e) return;
@@ -281,26 +491,8 @@ function openTimeline(idx) {
 }
 window.openTimeline = openTimeline;
 
-// Character cards
-var cc = document.getElementById('cc');
-if (cc && DATA.chars) {
-  var h = '';
-  for (var i = 0; i < DATA.chars.length; i++) {
-    var c = DATA.chars[i];
-    var t = c.type === 'pc' ? 'PC' : 'NPC';
-    var pools = [];
-    var keys = Object.keys(c.pools);
-    for (var j = 0; j < keys.length; j++) {
-      var k = keys[j], v = c.pools[k];
-      pools.push(k + ' ' + v.cur + '/' + v.max);
-    }
-    h += '<div class="wiki-card" onclick="openChar(' + i + ')">' +
-      '<div style="margin-bottom:2px"><b>' + c.name + '</b> <span class="tag-' + (c.type === 'pc' ? 'pc' : 'npc') + '">' + t + '</span></div>' +
-      '<div class="wiki-body">' + pools.join(' · ') + '</div>' +
-      '</div>';
-  }
-  cc.innerHTML = h;
-}
+// Character cards — paginated 20/page with ?pchar= URL persistence
+try { renderCharsPage(); } catch(e) { var cc = document.getElementById('cc'); if (cc) cc.innerHTML = '<div style="color:#e94560">Char render error</div>'; }
 function openChar(idx) {
   var c = DATA.chars[idx];
   if (!c) return;
@@ -317,19 +509,8 @@ function openChar(idx) {
 }
 window.openChar = openChar;
 
-// Todos — wiki-card style
-var tl = document.getElementById('tlst');
-if (tl && DATA.todos) {
-  var h = '';
-  for (var i = 0; i < DATA.todos.length; i++) {
-    var t = DATA.todos[i];
-    var reasonEsc = (t.reason || '').replace(/'/g, "\\'");
-    h += '<div class="wiki-card" onclick="openTodo(' + i + ",'" + reasonEsc + "'" + ')">' +
-      '<div class="wiki-body">' + t.priority + ' ' + t.task + '</div>' +
-      '</div>';
-  }
-  tl.innerHTML = h;
-}
+// Todos — paginated 20/page with ?ptodo= URL persistence
+try { renderTodosPage(); } catch(e) { var tl = document.getElementById('tlst'); if (tl) tl.innerHTML = '<div style="color:#e94560">Todo render error</div>'; }
 
 } // end renderAll()
 
@@ -371,6 +552,8 @@ function findClue(id) {
   return null;
 }
 function openChronicle(idx) {
+  var chrModal = document.getElementById('chrModal');
+  if (chrModal && chrModal.classList.contains('on')) closeChronicleModal();
   var c = DATA.chronicles[idx];
   if (!c) return;
   var nps = JSON.parse(c.participants || '[]');
@@ -726,3 +909,97 @@ function openRelated(id) {
   drill([{html: h}], clue.id);
 }
 window.openRelated = openRelated;
+
+// === Lightbox: click enlarge, pinch-zoom, wheel zoom, click/tap close ===
+function openLightbox(src) {
+  var lb = document.getElementById('lightbox');
+  var img = document.getElementById('lbImg');
+  if (!lb || !img) return;
+  img.src = src;
+  img.style.transform = '';
+  img._scale = 1;
+  img._sx = 0;
+  img._sy = 0;
+  img._lastDist = 0;
+  lb.classList.add('show');
+}
+function closeLightbox() {
+  var lb = document.getElementById('lightbox');
+  var img = document.getElementById('lbImg');
+  if (!lb || !img) return;
+  lb.classList.remove('show');
+  setTimeout(function(){ img.src = ''; }, 200);
+}
+window.openLightbox = openLightbox;
+window.closeLightbox = closeLightbox;
+
+(function(){
+  var img = document.getElementById('lbImg');
+  var lb = document.getElementById('lightbox');
+  if (!img || !lb) return;
+
+  function xf() {
+    img.style.transform = 'translate(' + (img._sx||0) + 'px,' + (img._sy||0) + 'px) scale(' + (img._scale||1) + ')';
+  }
+
+  // Scroll wheel zoom
+  img.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var s = (img._scale || 1) + (e.deltaY < 0 ? 0.2 : -0.2);
+    s = Math.min(Math.max(s, 0.3), 6);
+    img._scale = s;
+    xf();
+  }, {passive: false});
+
+  // Pinch zoom (touch)
+  img.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 2) {
+      img._lastDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }, {passive: true});
+
+  img.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 2 && img._lastDist) {
+      e.preventDefault();
+      var dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      var s = (img._scale || 1) * (dist / img._lastDist);
+      s = Math.min(Math.max(s, 0.3), 6);
+      img._scale = s;
+      xf();
+      img._lastDist = dist;
+    }
+  }, {passive: false});
+
+  // Mouse drag to pan
+  img.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    img._dragStart = {x: e.clientX, y: e.clientY, sx: img._sx||0, sy: img._sy||0};
+    img._dragging = true;
+    img.style.cursor = 'grabbing';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!img._dragging) return;
+    img._sx = img._dragStart.sx + (e.clientX - img._dragStart.x);
+    img._sy = img._dragStart.sy + (e.clientY - img._dragStart.y);
+    xf();
+  });
+  document.addEventListener('mouseup', function() {
+    if (img._dragging) { img._dragging = false; img.style.cursor = 'grab'; }
+  });
+
+  // Click on dark backdrop → close
+  lb.addEventListener('click', function(e) {
+    if (e.target === lb) closeLightbox();
+  });
+
+  // ESC key → close
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && lb.classList.contains('show')) closeLightbox();
+  });
+})();

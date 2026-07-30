@@ -24,7 +24,7 @@ from pathlib import Path
 def get_conn(db_path):
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
-    conn.enable_load_extension(True)  # ponytail: FTS5 needs extension loading
+    # ponytail: FTS5 is built into Python's sqlite3 — no extension loading needed
     return conn
 
 
