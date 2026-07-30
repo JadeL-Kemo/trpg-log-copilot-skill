@@ -657,6 +657,8 @@ def init_database(log_dir):
             status TEXT DEFAULT 'active',
             scene_id TEXT,
             linked_ids TEXT DEFAULT '[]',
+            priority TEXT DEFAULT 'medium',
+            tags TEXT DEFAULT '[]',
             created_at TEXT DEFAULT (datetime('now','localtime')),
             updated_at TEXT DEFAULT (datetime('now','localtime'))
         );

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.8.9] — 2026-07-30
+
+### Fixed
+
+- **P1: cc.js 团本数据泄漏** — `detectMonster()` 删除硬编码怪物名（`炎之精`/`活体相机`/`神秘的水手`），改用 `stance === '敌对'` + `faction === '实体侧'` 通用判定
+- **P0: init_session.py schema 漂移** — clues 表补 `priority TEXT DEFAULT 'medium'` + `tags TEXT DEFAULT '[]'` 列
+- **P1: serve.py 监听范围** — `0.0.0.0` → `127.0.0.1`，防止团本数据暴露到局域网
+- **P1: cc.js XSS 防护** — 17处未转义 innerHTML 补 `esc()`（`e.id`、技能值 `v`、属性值 `st[l]`、攻击值 `a.value`/`a.reach`）
+- **P1: cc.js JSON 防护** — 4处 `JSON.parse()` 加 try-catch，防字段污染导致整卡渲染崩溃
+- **P1: scripts/__pycache__/** — 4个 .pyc 从 git 跟踪移除
+
+---
+
 ## [1.8.8] — 2026-07-30
 
 ### Added

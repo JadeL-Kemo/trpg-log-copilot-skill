@@ -153,8 +153,7 @@ const CC = (() => {
 
   function detectMonster(n) {
     if (n.faction === '实体侧') return true;
-    const kw = ['炎之精','活体相机','神秘的水手','怪物','实体','亡','灵','龙'];
-    if (n.stance === '敌对' && kw.some(k => n.name.includes(k))) return true;
+    if (n.stance === '敌对') return true;
     if (typeof n.key_facts === 'string') {
       return ['火焰','怪物','实体','不可名状','异界','不死','深潜','神话'].some(k => n.key_facts.includes(k));
     }
@@ -537,7 +536,7 @@ const CC = (() => {
     // Footer
     if (e.scene_id || e.id) {
       const ft = doc('div', { class:'cc-card-ft' });
-      ft.innerHTML = `<span>${e.id}</span>${e.scene_id ? '<span>登场: '+esc(e.scene_id)+'</span>' : ''}`;
+      ft.innerHTML = `<span>${esc(e.id)}</span>${e.scene_id ? '<span>登场: '+esc(e.scene_id)+'</span>' : ''}`;
       card.appendChild(ft);
     }
 
@@ -557,7 +556,7 @@ const CC = (() => {
       labels.forEach(l => {
         if (st[l] !== undefined) {
           const stat = doc('div', {class:'cc-stat'});
-          stat.innerHTML = `<div class="cc-stat-val">${st[l]}</div><div class="cc-stat-lbl">${l}</div>`;
+          stat.innerHTML = `<div class="cc-stat-val">${esc(st[l])}</div><div class="cc-stat-lbl">${l}</div>`;
           row.appendChild(stat);
         }
       });
@@ -579,7 +578,7 @@ const CC = (() => {
       const sec = addSection(body, '技能', '');
       const list = doc('div', {class:'cc-skill-list'});
       Object.entries(skills).sort((a,b)=>b[1]-a[1]).slice(0,8).forEach(([k,v]) => {
-        list.innerHTML += `<div class="cc-skill"><span class="cc-skill-name">${esc(skillLabel(k))}</span><span class="cc-skill-val">${v}</span></div>`;
+        list.innerHTML += `<div class="cc-skill"><span class="cc-skill-name">${esc(skillLabel(k))}</span><span class="cc-skill-val">${esc(v)}</span></div>`;
       });
       sec.appendChild(list);
     }
@@ -653,15 +652,16 @@ const CC = (() => {
         const hits = a.hits > 1 ? ` ×${a.hits}` : '';
         atk.innerHTML = `<div class="cc-atk-row">
           <span class="cc-atk-name">${esc(a.name)}${hits}</span>
-          <span class="cc-atk-stat">${esc(a.skill||'')} ${a.value||''} · ${esc(a.damage||'')}<span class="cc-atk-dmgtype ${a.type||''}">${esc(a.type||'')}</span></span>
+          <span class="cc-atk-stat">${esc(a.skill||'')} ${esc(a.value||'')} · ${esc(a.damage||'')}<span class="cc-atk-dmgtype ${a.type||''}">${esc(a.type||'')}</span></span>
         </div>`;
         if (a.notes) atk.innerHTML += `<div style="font-size:10px;color:var(--fg3);margin-top:2px;">${esc(a.notes)}</div>`;
         sec.appendChild(atk);
       });
     }
     if (e.defense) {
-      const d = typeof e.defense === 'string' ? JSON.parse(e.defense) : e.defense;
-      addSection(body, '防御', `${esc(d.type||'')}: ${d.value||''}`);
+      var d = e.defense;
+      if (typeof d === 'string') { try { d = JSON.parse(d); } catch(_) { d = {}; } }
+      addSection(body, '防御', `${esc(d.type||'')}: ${esc(d.value||'')}`);
     }
     if (e.abilities && e.abilities.length) {
       const sec = addSection(body, '能力', '');
@@ -680,7 +680,8 @@ const CC = (() => {
       e.weaknesses.forEach(w => { sec.appendChild(doc('div',{class:'cc-fact',text:`${w.name||''}: ${w.description||''}`})); });
     }
     if (e.hp_monster) {
-      const hp = typeof e.hp_monster === 'string' ? JSON.parse(e.hp_monster) : e.hp_monster;
+      var hp = e.hp_monster;
+      if (typeof hp === 'string') { try { hp = JSON.parse(hp); } catch(_) { hp = {}; } }
       if (hp.max) body.appendChild(renderPoolBar('HP', hp.current||hp.max, hp.max, Math.round((hp.current||hp.max)/hp.max*100), 'hp'));
     }
     if (e.movement || (e.monster_armor && e.monster_armor.value)) {
@@ -861,21 +862,23 @@ const CC = (() => {
       sheet.appendChild(sheetSection('Sanity Check', html));
     }
     if (e.hp_monster) {
-      const hp = typeof e.hp_monster === 'string' ? JSON.parse(e.hp_monster) : e.hp_monster;
-      if (hp.max) sheet.appendChild(sheetSection('生命值', `${hp.current||hp.max}/${hp.max}${hp.formula?' ('+hp.formula+')':''}`));
+      var hp_m = e.hp_monster;
+      if (typeof hp_m === 'string') { try { hp_m = JSON.parse(hp_m); } catch(_) { hp_m = {}; } }
+      if (hp_m.max) sheet.appendChild(sheetSection('生命值', `${hp_m.current||hp_m.max}/${hp_m.max}${hp_m.formula?' ('+hp_m.formula+')':''}`));
     }
     if (e.attack_skills && e.attack_skills.length) {
       let html = '';
       e.attack_skills.forEach(a => {
         const hits = a.hits>1?` ×${a.hits}`:'';
-        html += `<div class="cc-sheet-atk"><span style="font-weight:700;min-width:100px;">${esc(a.name)}${hits}</span><span>${esc(a.skill||'')} ${a.value||''}</span><span>${esc(a.damage||'')}</span><span style="color:var(--fg3);">${esc(a.type||'')} ${a.reach||''}</span></div>`;
+        html += `<div class="cc-sheet-atk"><span style="font-weight:700;min-width:100px;">${esc(a.name)}${hits}</span><span>${esc(a.skill||'')} ${esc(a.value||'')}</span><span>${esc(a.damage||'')}</span><span style="color:var(--fg3);">${esc(a.type||'')} ${esc(a.reach||'')}</span></div>`;
         if (a.notes) html += `<div style="font-size:10px;margin-left:100px;opacity:.7;">${esc(a.notes)}</div>`;
       });
       sheet.appendChild(sheetSection('攻击方式', html));
     }
     if (e.defense) {
-      const d = typeof e.defense === 'string' ? JSON.parse(e.defense) : e.defense;
-      addSheetRow(sheet, `防御: ${d.type||''} ${d.value||''}`);
+      var d2 = e.defense;
+      if (typeof d2 === 'string') { try { d2 = JSON.parse(d2); } catch(_) { d2 = {}; } }
+      addSheetRow(sheet, `防御: ${d2.type||''} ${d2.value||''}`);
     }
     if (e.abilities && e.abilities.length) {
       let html = '';

@@ -236,7 +236,7 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
     
     def log_message(self, fmt, *args): pass
 
-httpd = socketserver.ThreadingTCPServer(("", PORT), PanelHandler)
+httpd = socketserver.ThreadingTCPServer(("127.0.0.1", PORT), PanelHandler)
 httpd.daemon_threads = True
 httpd.timeout = 1
 
