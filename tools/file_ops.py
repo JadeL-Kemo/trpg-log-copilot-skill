@@ -27,7 +27,9 @@ def _last_id(text):
 
 def _next_id(last):
     if not last: return None
-    prefix, num = re.match(r'([A-Z]+-)(\d+)', last).groups()
+    m = re.match(r'([A-Z]+-)(\d+)', last)
+    if not m: return None
+    prefix, num = m.groups()
     return prefix + str(int(num) + 1).zfill(len(num))
 
 # ==================== append-table ====================

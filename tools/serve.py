@@ -19,7 +19,7 @@ for i, a in enumerate(sys.argv):
     if a == '--port' and i+1 < len(sys.argv): PORT = int(sys.argv[i+1])
     if a == '--idle' and i+1 < len(sys.argv):
         try: IDLE = int(sys.argv[i+1])
-        except: pass
+        except ValueError: pass
     if a == '--hidden': HIDDEN = True
 
 if not os.path.isdir(LOG):
@@ -36,14 +36,14 @@ def port_busy(p):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(0.3); s.bind(('', p)); s.close()
         return False
-    except: return True
+    except OSError: return True
 
 has_stored = os.path.exists(port_file)
 stored = 0
 if has_stored:
     try:
         with open(port_file) as f: stored = json.load(f)
-    except: has_stored = False
+    except (OSError, json.JSONDecodeError, ValueError): has_stored = False
 
 # Priority: explicit --port > stored .port > auto-pick 9201
 if PORT == 0 and has_stored:
@@ -120,7 +120,7 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
                         try:
                             row = conn.execute(
                                 "SELECT chunk_text FROM narrative_fts WHERE chunk_text MATCH ? LIMIT 1", (q.replace(' ', ' AND '),)).fetchone()
-                        except: pass
+                        except Exception: pass  # FTS5 syntax error on special chars — fall through to LIKE
                     conn.close()
                     if row: text = row[0]
                 self.send_response(200)
@@ -147,7 +147,7 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
                     # Relative display name from workspace
                     active = os.path.abspath(full) == os.path.abspath(LOG_DIR)
                     candidates.append({"name": name, "active": active})
-        except: pass
+        except OSError: pass  # permission error on inaccessible directory
         # Also include LOG_DIR itself if it was scanned from a parent
         if not any(c['active'] for c in candidates):
             candidates.append({"name": os.path.basename(LOG_DIR), "active": True})

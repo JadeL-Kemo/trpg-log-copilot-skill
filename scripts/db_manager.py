@@ -24,7 +24,7 @@ from pathlib import Path
 def get_conn(db_path):
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
-    # ponytail: FTS5 is built into Python's sqlite3 — no extension loading needed
+    # FTS5 is built into Python's sqlite3 — no extension loading needed
     return conn
 
 
@@ -335,7 +335,7 @@ def cmd_state_add(db_path, name, deltas, loc, status, reason, clue_ref, scene_re
     conn = get_conn(db_path)
     try:
         exists = conn.execute("SELECT 1 FROM char_base WHERE char_name=?", (name,)).fetchone()
-    except:
+    except Exception:
         print("ERROR: database not initialized — run 'init' first")
         conn.close(); return
     if not exists:
@@ -557,7 +557,7 @@ def cmd_graph(db_path, entity, as_char=None):
     # NPC info
     try:
         npc = conn.execute("SELECT * FROM npcs WHERE name=?", (entity,)).fetchone()
-    except: npc = None
+    except Exception: npc = None
     if npc:
         print("\n  NPC: {0} [{1}] stance={2} faction={3}".format(
             npc['name'], npc['role'], npc['stance'] or '-', npc['faction'] or '-'))
@@ -621,7 +621,7 @@ def cmd_links(db_path, entity):
     # NPC lookups
     try:
         npc = conn.execute("SELECT * FROM npcs WHERE name=?", (entity,)).fetchone()
-    except:
+    except Exception:
         npc = None
     if npc:
         for rel in json.loads(npc['relationships'] or '[]'):
@@ -684,7 +684,7 @@ def _validate_int(v, field):
     """Must be an integer."""
     if not isinstance(v, int):
         try: v = int(v)
-        except: print("ERROR: {0} '{1}' — 必须是整数".format(field, v)); return None
+        except (ValueError, TypeError): print("ERROR: {0} '{1}' — 必须是整数".format(field, v)); return None
     return v
 
 def _load_dict(conn, category):

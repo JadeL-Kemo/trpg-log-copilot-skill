@@ -14,6 +14,11 @@ All notable changes to this project will be documented in this file.
 - **P1: cc.js XSS 防护** — 17处未转义 innerHTML 补 `esc()`（`e.id`、技能值 `v`、属性值 `st[l]`、攻击值 `a.value`/`a.reach`）
 - **P1: cc.js JSON 防护** — 4处 `JSON.parse()` 加 try-catch，防字段污染导致整卡渲染崩溃
 - **P1: scripts/__pycache__/** — 4个 .pyc 从 git 跟踪移除
+- **P1-4: 11处裸 except** — 全部改为 `except Exception` / `ValueError` / `OSError` / `TypeError`；`import_md.py` FTS rebuild 失败加日志
+- **P1-3: schema.md 重写** — 废弃表 `speculations`/`scenes`/`todos` 移除，补 5 张 v1.6+ 新表（char_base/char_state_log/npc_relations/narrative_chunks/dict_labels），字段名对齐 DDL
+- **P2-5: 文件命名统一** — `init_session.py` 创建 `01_线索.md`（匹配 import_md.py），全部 8 处引用同步
+- **P2-2: file_ops.py 空值保护** — `_next_id` 正则不匹配时返回 None 而非崩溃
+- **db_manager.py 注释清理** — 移除 "ponytail" 误植词
 
 ---
 

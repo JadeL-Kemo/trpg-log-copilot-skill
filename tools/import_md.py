@@ -325,7 +325,7 @@ if os.path.exists(action_path):
     for s in states:
         try:
             exists = conn.execute("SELECT 1 FROM char_base WHERE char_name=?", (s['name'],)).fetchone()
-        except:
+        except Exception:
             print("  Skip state '{0}' — DB not initialized".format(s['name'])); continue
         if not exists:
             print("  Skip state '{0}' — not in char_base. Use 'state init'.".format(s['name'])); continue
@@ -362,7 +362,7 @@ if os.path.exists(ini_path):
 
 # Rebuild FTS
 try: conn.execute("INSERT INTO clues_fts(clues_fts) VALUES('rebuild')")
-except: pass
+except Exception: print("  WARN: FTS rebuild failed — search may be incomplete")
 conn.commit(); conn.close()
 print("\nSync complete.")
 
