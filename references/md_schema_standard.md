@@ -57,7 +57,7 @@ MD表格(1行/条)   →  INSERT clues/npcs    graph <实体>      跑团面板.
 ### `04_行动日志.md`（叙事+行内标注）
 
 ```
-藤堂被火焰击中...
+NPC_A被火焰击中...
 <!-- state: 角色名 hp -8 combat_fire CL-F01 S01_R02 1 -->
 随后被送入ICU。
 ```

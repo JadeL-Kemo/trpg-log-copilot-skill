@@ -161,7 +161,7 @@ const CC = (() => {
   }
 
   // Strip NPC name prefix from relation descriptions
-  // "父亲" → "父亲", "玛莎，女友同学" → "女友同学", "李锐光，导师，oneway" → "导师"
+  // "父亲" → "父亲", "角色A，女友同学" → "女友同学", "角色B，导师，oneway" → "导师"
   function cleanRelType(desc) {
     if (!desc) return '关联';
     var commas = [];

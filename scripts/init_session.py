@@ -10,7 +10,7 @@ Examples:
     python init_session.py ./跑团日志                          # 基础初始化
     python init_session.py ./跑团日志 --with-db                # 含 SQLite
     python init_session.py ./跑团日志 --with-db --gm           # GM 模式
-    python init_session.py ./跑团日志 --name "李锐光失明事件"   # 自定义团本名
+    python init_session.py ./跑团日志 --name "示例团本"   # 自定义团本名
 """
 
 import os
@@ -36,12 +36,12 @@ LOG_FILES = {
 | `00_当前局势.md` | 🔴 **每轮必读** — 一页速览仪表盘 | 每轮回复前30秒 |
 | `01_线索.md` | 活跃追查中的线索 + 待验证项 | 调查中 |
 | `01a_事实库.md` | 已确认基石事实（分类归档） | 深挖细节/结案时 |
-| `02_人物关系.md` | NPC 人际关系图谱 | 分析人物动机时 |
+| `02_人物.md` | NPC 人际关系图谱 | 分析人物动机时 |
 | `03_时间线.md` | 案件时间线 | 推断因果/复盘时 |
 | `04_行动日志.md` | 当前场景日志 | 追踪当前进展 |
 | `04a_过往日志.md` | 已完成场景的归档 | 回顾过往细节 |
 | `05_推测与假设.md` | 推理和假设（🟢🟡🔴三级） | 复查分析时 |
-| `06_待办事项.md` | 下一步行动（按优先级） | 决定调查方向时 |
+| `06_待办.md` | 下一步行动（按优先级） | 决定调查方向时 |
 | `07_跑团规范手册.md` | 编写规范和证据标准 | 切换平台/AI时加载 |
 
 ---
@@ -185,7 +185,7 @@ LOG_FILES = {
 | — | — | — |
 """,
 
-    "02_人物关系.md": """# 人物关系
+    "02_人物.md": """# 人物关系
 
 > 格式：`[人物] 身份 | 立场 | 已知动机 | 与我的关系 | 备注`
 
@@ -241,7 +241,7 @@ LOG_FILES = {
     "02a_人物档案.md": """# 完整人物档案
 
 > 已离开/已故 NPC 的完整档案归档。
-> 活跃 NPC → `02_人物关系.md`
+> 活跃 NPC → `02_人物.md`
 
 ---
 
@@ -269,7 +269,7 @@ LOG_FILES = {
 | — | — |
 """,
 
-    "03a_详细时间线.md": """# 详细时间线
+    "03a_大纪事.md": """# 详细时间线
 
 > 含所有骰子结果、详细对话片段。超过 `03_时间线.md` 内容量时迁移至此。
 
@@ -346,7 +346,7 @@ LOG_FILES = {
 （空——待归档）
 """,
 
-    "06_待办事项.md": """# 待办事项
+    "06_待办.md": """# 待办事项
 
 > 优先级: 🔴 紧急 | 🟡 重要 | 🟢 可延迟
 
@@ -421,11 +421,11 @@ LOG_FILES = {
 |------|----------|----------|
 | 0 | `00_当前局势.md` | 🔴 先扫30秒 |
 | 1 | `01_线索.md` | 提取新线索，编号归档 |
-| 2 | `02_人物关系.md` | 提取新NPC，更新关系图谱 |
+| 2 | `02_人物.md` | 提取新NPC，更新关系图谱 |
 | 3 | `03_时间线.md` | 提取事件，按时间排列 |
 | 4 | `04_行动日志.md` | 记录当前场景行动+骰子结果 |
 | 5 | `05_推测与假设.md` | 交叉关联分析（严格分三级） |
-| 6 | `06_待办事项.md` | 更新下一步行动建议 |
+| 6 | `06_待办.md` | 更新下一步行动建议 |
 
 ### 每条线索必须标注
 
@@ -445,12 +445,12 @@ LOG_FILES = {
 ├── README.md                  总索引
 ├── 01_线索.md               活跃线索
 ├── 01a_事实库.md              已确认事实
-├── 02_人物关系.md             NPC图谱
+├── 02_人物.md             NPC图谱
 ├── 03_时间线.md               时间轴
 ├── 04_行动日志.md             当前场景
 ├── 04a_过往日志.md            过往归档
 ├── 05_推测与假设.md           推理分级
-├── 06_待办事项.md             行动清单
+├── 06_待办.md             行动清单
 └── 07_跑团规范手册.md         本文档
 ```
 
@@ -516,7 +516,7 @@ LOG_FILES = {
 团本为[团本名称]。
 跑团日志存放于 [路径]\跑团日志\，包含多个分类文件。
 当用户告知跑团进展时，以[AI角色]身份回复（称呼用户为"[称呼]"），执行：
-(1)扫描线索归档至01_线索，(2)新NPC归档至02_人物关系，(3)更新03_时间线，(4)行动写入04_行动日志，(5)交叉关联分析写入05_推测，(6)更新06_待办事项。
+(1)扫描线索归档至01_线索，(2)新NPC归档至02_人物，(3)更新03_时间线，(4)行动写入04_行动日志，(5)交叉关联分析写入05_推测，(6)更新06_待办。
 每条线索标注【来源】【可靠性】【关联编号】。全程以[副官/秘书]口吻提供分析和建议。
 ```
 """,
@@ -630,126 +630,6 @@ def create_directory_structure(target_dir, session_name, gm_mode=False):
     return created, log_dir
 
 
-def init_database(log_dir):
-    """Initialize SQLite database for the session."""
-    try:
-        import sqlite3
-    except ImportError:
-        print("⚠️  Python sqlite3 module not available. Skipping database initialization.")
-        return None
-
-    db_path = Path(log_dir) / "trpg_data.db"
-
-    if db_path.exists():
-        print(f"⚠️  Database already exists: {db_path}")
-        return db_path
-
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-
-    cursor.executescript("""
-        CREATE TABLE IF NOT EXISTS clues (
-            id TEXT PRIMARY KEY,
-            content TEXT NOT NULL,
-            source TEXT NOT NULL,
-            confidence TEXT NOT NULL,
-            category TEXT DEFAULT 'core',
-            status TEXT DEFAULT 'active',
-            scene_id TEXT,
-            linked_ids TEXT DEFAULT '[]',
-            priority TEXT DEFAULT 'medium',
-            tags TEXT DEFAULT '[]',
-            created_at TEXT DEFAULT (datetime('now','localtime')),
-            updated_at TEXT DEFAULT (datetime('now','localtime'))
-        );
-
-        -- FTS5 全文搜索 (自动同步触发器, 零维护)
-        CREATE VIRTUAL TABLE IF NOT EXISTS clues_fts USING fts5(
-            content, source, confidence, content=clues, content_rowid=rowid
-        );
-        CREATE TRIGGER IF NOT EXISTS clues_ai AFTER INSERT ON clues BEGIN
-            INSERT INTO clues_fts(rowid, content, source, confidence)
-            VALUES (new.rowid, new.content, new.source, new.confidence);
-        END;
-        CREATE TRIGGER IF NOT EXISTS clues_ad AFTER DELETE ON clues BEGIN
-            INSERT INTO clues_fts(clues_fts, rowid, content, source, confidence)
-            VALUES ('delete', old.rowid, old.content, old.source, old.confidence);
-        END;
-        CREATE TRIGGER IF NOT EXISTS clues_au AFTER UPDATE ON clues BEGIN
-            INSERT INTO clues_fts(clues_fts, rowid, content, source, confidence)
-            VALUES ('delete', old.rowid, old.content, old.source, old.confidence);
-            INSERT INTO clues_fts(rowid, content, source, confidence)
-            VALUES (new.rowid, new.content, new.source, new.confidence);
-        END;
-
-        CREATE TABLE IF NOT EXISTS npcs (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            role TEXT,
-            appearance TEXT,
-            stance TEXT,
-            status TEXT DEFAULT 'active',
-            faction TEXT,
-            key_facts TEXT DEFAULT '[]',
-            relationships TEXT DEFAULT '[]',
-            scene_id TEXT,
-            tags TEXT DEFAULT '[]',
-            created_at TEXT DEFAULT (datetime('now','localtime')),
-            updated_at TEXT DEFAULT (datetime('now','localtime'))
-        );
-
-        CREATE TABLE IF NOT EXISTS timeline_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_time TEXT NOT NULL,
-            event TEXT NOT NULL,
-            participants TEXT DEFAULT '[]',
-            scene_id TEXT,
-            related_clues TEXT DEFAULT '[]',
-            notes TEXT,
-            created_at TEXT DEFAULT (datetime('now','localtime'))
-        );
-
-        CREATE TABLE IF NOT EXISTS speculations (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            basis_clues TEXT DEFAULT '[]',
-            confidence TEXT NOT NULL,
-            status TEXT DEFAULT 'active',
-            scene_id TEXT,
-            tags TEXT DEFAULT '[]',
-            created_at TEXT DEFAULT (datetime('now','localtime')),
-            updated_at TEXT DEFAULT (datetime('now','localtime'))
-        );
-
-        CREATE TABLE IF NOT EXISTS scenes (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            summary TEXT,
-            status TEXT DEFAULT 'in_progress',
-            started_at TEXT,
-            completed_at TEXT,
-            created_at TEXT DEFAULT (datetime('now','localtime'))
-        );
-
-        CREATE TABLE IF NOT EXISTS todos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            task_id TEXT,
-            content TEXT NOT NULL,
-            priority TEXT NOT NULL,
-            status TEXT DEFAULT 'pending',
-            scene_id TEXT,
-            related_clues TEXT DEFAULT '[]',
-            created_at TEXT DEFAULT (datetime('now','localtime'))
-        );
-    """)
-
-    conn.commit()
-    conn.close()
-
-    return db_path
-
-
 def main():
     parser = argparse.ArgumentParser(description="Initialize a TRPG session directory")
     parser.add_argument("target_dir", help="Target directory for log files")
@@ -769,9 +649,12 @@ def main():
         print(f"  ✅ {f}")
 
     if args.with_db:
-        db_path = init_database(log_dir)
-        if db_path:
-            print(f"  ✅ trpg_data.db (SQLite)")
+        db_path = Path(log_dir) / "trpg_data.db"
+        import subprocess, sys
+        skill_dir = Path(__file__).resolve().parent.parent
+        r = subprocess.run([sys.executable, str(skill_dir / "scripts" / "db_manager.py"), str(db_path), "init"])
+        if r.returncode == 0:
+            print(f"  ✅ trpg_data.db (SQLite via db_manager.py init)")
 
     print(f"\nSession initialized at: {log_dir.resolve()}")
     print("Edit the files to fill in character details, then start the first scene.")

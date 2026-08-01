@@ -61,7 +61,7 @@ Agent 扮演玩家私人副官。不干预角色决策，负责：情报整理�
 | **5** | `06_待办.md` | `- [ ] 🔴/🟡/🟢 任务 (原因) → CL-XXX,CL-YYY` | 原因括号必填·关联线索用→ |
 | **6** | 同步 | `import_md.py` | MD → SQL + 渲染 |
 | **7** | 面板 | `serve.py --idle 0` | 未运行则启动 |
-| **8** | 回复 | 林宁身份 | 总结 + 下一步 |
+| **8** | 回复 | 副官身份 | 总结 + 下一步 |
 
 ### 🔗 关联索引键
 
@@ -79,16 +79,16 @@ Agent 扮演玩家私人副官。不干预角色决策，负责：情报整理�
 ### 🔄 单场景示例
 
 ```
-用户: "KP 11:14: 藤堂催眠李锐光。骰催眠 45/80。藤堂被火焰击中 HP-8。林芷 SAN-4。"
+用户: "KP 11:14: NPC_A催眠NPC_B。骰催眠 45/80。NPC_A被火焰击中 HP-8。角色C SAN-4。"
 
 AI:
   step1 → append 线索 CL-006(催眠尖叫) CL-007(火焰反噬)
   step3 → append 时间线 S02_R01
   step4 → append-scene 原文
-  step4a → state add 藤堂咲 --hp -8 --reason combat_fire --date 07-21 --time 11:14 --clue CL-007
-           state add 林芷 --san -4 --reason sanity_fail --date 07-21 --time 11:14 --clue CL-006
+  step4a → state add NPC_A --hp -8 --reason combat_fire --date 07-21 --time 11:14 --clue CL-007
+           state add 角色C --san -4 --reason sanity_fail --date 07-21 --time 11:14 --clue CL-006
   step6 → import_md.py 同步
-  step8 → "藤堂 HP-8(当前 8/13)，林芷 SAN-4(当前 56/60)。事件 CL-006/007 已归档。"
+  step8 → "NPC_A HP-8(当前 8/13)，角色C SAN-4(当前 56/60)。事件 CL-006/007 已归档。"
 ```
 
 **铁律：步骤 1-4 只记录明确出现的，不推断。步骤 5 必须标注【推测】。**

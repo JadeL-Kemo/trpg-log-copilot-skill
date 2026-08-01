@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [1.8.9] — 2026-07-30
+## [1.8.10] — 2026-08-01
+
+### Fixed
+
+- **P0-2 收尾: init_session.py 委托 db_manager.py** — 删除自建 `init_database()`（118行），改为 `subprocess.run(db_manager.py init)`，彻底消除 schema 漂移
+- **P1-2: .gitignore 纯 UTF-8** — 重写文件移除编码混杂，`git rm --cached` 移除 16 个被跟踪的 .pyc/旧 zip
+- **团本数据脱敏收尾** — SKILL.md/cc.js/file_specs.md/md_schema_standard.md 共 6 处残留角色名/地名改为泛型（NPC_A/角色C/副官身份）
+- **文件名完全统一** — `02_人物关系`/`03a_详细时间线`/`06_待办事项` → `02_人物`/`03a_大纪事`/`06_待办`，匹配 import_md.py 默认配置
+
+### Changed
+
+- **文档路径现已可用** — `init_session.py --with-db` 不再创建残缺数据库，完整委托 db_manager.py init
 
 ### Fixed
 
