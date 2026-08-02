@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.8.11] — 2026-08-02
+
+### Fixed
+
+- **sync.ini 默认生成** — `init_session.py` 新建团目录时自动生成 `sync.ini`（含 `[sync]` + `[narrative]` 段），修复 `import_md.py` 叙事导入默认不工作的问题
+- **file_specs.md 文件名统一** — `01_线索板`/`02_人物关系`/`06_待办事项` 全部改为实际文件名 `01_线索`/`02_人物`/`06_待办`（含 `assets/log_template/README.md`）
+- **serve.py verified 语义** — `/api/board` 中 `confidence AS verified` → `'confirmed' AS verified`（DB 只存已确认线索，verified 固定为 confirmed，修复前端标签错位）
+
+---
+
 ## [1.8.10] — 2026-08-01
 
 ### Fixed

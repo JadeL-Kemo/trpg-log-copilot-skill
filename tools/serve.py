@@ -184,7 +184,7 @@ class PanelHandler(http.server.SimpleHTTPRequestHandler):
             return
         conn = sqlite3.connect(db); conn.row_factory = sqlite3.Row
         data = {
-            "clues": [dict(r) for r in conn.execute("SELECT id,content,source,confidence AS verified,confidence,tags,linked_ids FROM clues ORDER BY id")],
+            "clues": [dict(r) for r in conn.execute("SELECT id,content,source,'confirmed' AS verified,confidence,tags,linked_ids FROM clues ORDER BY id")],
             "npcs": [dict(r) for r in conn.execute("SELECT id,name,role,stance,faction,key_facts,relationships FROM npcs ORDER BY id")],
             "events": [dict(r) for r in conn.execute("SELECT event_time,event,participants,related_clues,notes,scene_id,created_at FROM timeline_events WHERE category IS NULL OR category != 'chronicle' ORDER BY COALESCE(event_date,event_time), created_at, event_time")],
             "chronicles": [dict(r) for r in conn.execute("SELECT event_date,event,participants,related_clues,notes FROM timeline_events WHERE category='chronicle' ORDER BY event_date")],

@@ -11,5 +11,5 @@ To manually use these templates:
 
 Key files:
 - `00_当前局势.md` — Dashboard (loaded every turn)
-- `01_线索板.md` — Active clues board
+- `01_线索.md` — Active clues board
 - `07_跑团规范手册.md` — Self-contained migration manual (most important for platform switching)

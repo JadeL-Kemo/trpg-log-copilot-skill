@@ -649,6 +649,25 @@ def main():
     print()
 
     created, log_dir = create_directory_structure(args.target_dir, args.name, args.gm)
+
+    # Generate sync.ini (drives import_md.py sync paths + narrative chunks)
+    _sync_ini_template = """\
+[sync]
+01_clues = 01_线索.md
+02_npcs = 02_人物.md
+03_timeline = 03_时间线.md
+04_action = 04_行动日志.md
+06_todos = 06_待办.md
+
+[narrative]
+04 = 04_行动日志.md
+"""
+    ini_path = log_dir / "sync.ini"
+    if not ini_path.exists():
+        ini_path.write_text(_sync_ini_template, encoding='utf-8')
+        created.append("sync.ini")
+        print(f"  ✅ sync.ini")
+
     print(f"Created {len(created)} files:")
     for f in created:
         print(f"  ✅ {f}")
