@@ -2,20 +2,73 @@
 
 [![CodeBuddy](https://img.shields.io/badge/CodeBuddy-SKILL-blue)](https://www.codebuddy.ai) [![Version](https://img.shields.io/badge/version-1.8.10-green)](https://github.com/JadeL-Kemo/trpg-log-copilot-skill/releases) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**让 AI 成为你的跑团副官。** 车卡辅助、日志归档、线索图谱查询、防超游——零额外配置，解压即用。
+> # 玩家做决定，副官管信息。
+>
+> **它不替你扮演，不替你思考，不替你决定。**
+> 它只做一件事：把跑团中发生的一切**记住、整理好**，
+> 让你在每一次做决定的时候——**什么都知道**。
 
 ---
 
-## 为什么需要这个？
+## 它是谁？
 
-跑团时你需要关注剧情、扮演角色、做决策。但混乱的线索板、遗漏的 NPC 关系、模糊的时间线会拖垮体验。
+它是你桌边的一个 **书记官**。
 
-这个 SKILL 让 AI 帮你：
-- **自动归档** — 每轮结束发聊天记录，AI 自动分拣到 6 类文件
-- **智能检索** — SQLite FTS5 + CLI 命令（graph/events/search），一条命令出完整关系图谱
-- **信息茧房** — 三轴验证体系（证实性+紧急性+来源），角色视角过滤，防超游/OOC
-- **骰子集成** — CoC/DND 检定一键调用，骰子结果自动溯源
-- **HTML 面板** — 自动生成 5 标签页仪表盘，手机浏览器友好
+跑团最怕两件事：**信息忘掉**、**角色串戏**。这位书记官帮你把两者都解决：
+你每说一句，它默默记下；你想不起来，问它一句，它几秒翻出来；哪些是"角色该知道的"、哪些只是"玩家该知道的"，它分得清清楚楚。
+
+但它**从不替你说话，从不替你做决定**。它是你的记事本 + 档案管理员，不是你的游戏。
+
+---
+
+## 设计核心理念
+
+### 你负责什么，它负责什么
+
+| 你负责 | 副官负责 |
+|:--|:--|
+| **扮演** — 你的角色 | **记住** — 发生过的一切 |
+| **思考** — 你的判断 | **整理** — 线索、人物、时间线 |
+| **决定** — 下一步去哪 | **提醒** — 你漏掉的、忘记的 |
+
+它拿走的是你的**信息负担**，留下的是你的**自由与掌控**。
+
+### 它绝不能变成的样子
+
+> **"AI 和 AI 在跑团，玩家反而成了观众。"**
+
+这不是它被设计出来的样子，也永远不会是。跑团最珍贵的东西是你**亲身的选择**。任何让"玩家一句话不说也能跑完一局"的能力，都刻意不做。
+
+### 为什么市面上很少有它？
+
+你去找找就会发现：
+- 帮你**写剧情、演角色、推剧情**的 AI 工具——一大堆，甚至能自动跑完一整局
+- 帮你**记住、整理、回顾你真实经历**的工具——几乎没有
+
+作者做它的原因很简单：**写剧情的已经够多了，缺的是一个好好当"书记官"的。**
+
+---
+
+## 它能做到什么
+
+- 📋 **自动归档** — 每轮结束发聊天记录，自动分拣成档案：线索 / 人物 / 时间线 / 行动 / 待办
+- 🔍 **快速回想** — "谁在第 12 轮提过钥匙？"——几秒翻给你，不用翻几十万字聊天记录
+- 🗺️ **情报面板** — 线索卡片、人物关系、时间线、角色状态一目了然，手机也能看
+- 🛡️ **防串戏** — 角色该知道的与玩家该知道的分开放，推测永远标注，不混进事实
+- 🎲 **小工具** — 掷骰子、规则速查、车卡辅助（常见规则：CoC / DND / 通用）
+
+---
+
+## 它不能做到什么
+
+| 不能 | 因为 |
+|:--|:--|
+| 替你扮演角色 | 扮演是你的事，副官不抢戏 |
+| 替你决定"下一步做什么" | 决定权永远在你手里 |
+| 当主持人（KP/GM） | 它不判定成败、不讲故事、不推动剧情 |
+| 帮你写剧情 | 剧情是你们共同创造的，它只记录 |
+| 当虚拟桌游/战棋平台 | 它是"记"的工具，不是"玩"的平台 |
+| 替代你们面对面的社交 | 它服务你们的局，不替代体验 |
 
 ---
 
@@ -26,58 +79,27 @@
 git clone https://github.com/JadeL-Kemo/trpg-log-copilot-skill.git \
   ~/.codebuddy/skills/trpg-log-copilot
 
-# 2. AI 自动建立项目 Rule（角色身份+技能速查+检索指令）
+# 2. AI 自动建立项目上下文（你的角色身份 + 技能速查）
 
-# 3. 每轮结束后：AI 写 MD 表格 + 行内标注 → import_md.py 同步 SQL
+# 3. 每轮结束，把聊天记录发给它：
+#    "帮我把这轮记下来"
 
 # 4. 下次继续：
-#    "继续跑团" → AI 从断点恢复（CLI 精准查询，零 token 遍历）
+#    "继续跑团" → 它从断点恢复，告诉你当前局势
 ```
 
-**零依赖即可使用**（纯 Markdown 工作流）。Python 工具可选增强：骰子、SQLite、规则书导入。
+**不懂技术也能用** —— 你只管跑团，剩下的交给副官。
 
 ---
 
-## 核心功能
+## 技术概览（给想了解的人）
 
-### 九步归档
+**零依赖即可使用**（纯 Markdown 工作流）。Python 工具可选增强：骰子、SQLite 检索、HTML 面板。
 
-| Step | 产出 | 作用 |
-|------|------|------|
-| 0 | `00_当前局势.md` | 仪表盘 + 断点恢复 |
-| 1 | `01_线索.md` | 新线索（MD 表格，自动同步 SQL） |
-| 2 | `02_人物.md` | NPC/实体表格 + 叙事分析 + 关系边表 |
-| 2a | `02_人物.md` | NPC 关系更新（`npc_relations` 边表） |
-| 3 | `03_时间线.md` | 事件速记表（story/scene 层） |
-| 3a | `03a_大纪事.md` | 世界观年表（chronicle 层） |
-| 4 | `04_行动日志.md` | 场景原文 + 骰子结果 + `<!-- state: -->` 标注 |
-| 4a | SQL | `state add` HP/SAN/资源变更 |
-| 5 | `06_待办.md` | 下一步行动 + 优先级 + 关联线索 |
-| 6 | 同步 | `import_md.py` → SQL + 渲染 panel.html |
-| 7 | 面板 | `serve.py` 启动 localhost 面板 |
-| 8 | 回复 | 副官身份总结 |
-
-### CLI 查询引擎
-
-```bash
-# 关系图谱 — 一次查出 NPC+线索+时间线+状态变更
-db_manager.py graph <实体> [--as 角色]
-db_manager.py relations [npc]              # NPC 关系边表
-db_manager.py events [--char] [--since]    # 双轨时间线
-db_manager.py search "<关键词>"            # FTS5 全文搜索
-db_manager.py state current                # 角色状态速览
-db_manager.py state query <角色>            # 角色变更历史
-db_manager.py trace <线索编号>              # 事件链溯源
-db_manager.py npcs [name]                  # NPC 查询
-db_manager.py timeline [--since] [--char]  # 时间线视图
-db_manager.py stats                        # 数据库统计
-file_ops.py append-table / replace-scene / append-scene    # 增删改
-narrative_search.py scenes / scene / grep                  # 精准检索
-```
-
-### HTML 面板
-
-自动生成暗色主题 5 标签页仪表盘（线索/人物/时间线/角色/待办），移动端适配，每轮自动刷新。
+- **九步归档** — 线索 / 人物 / 关系 / 时间线 / 大纪事 / 行动 / 状态 / 待办 / 同步 / 面板
+- **检索引擎** — `db_manager.py graph/events/search/state/trace`，零 token 大文件操作
+- **三轴验证** — 来源 × 确信度 × 关联编号，防超游/OOC/信息茧房
+- **HTML 面板** — 自动生成暗色仪表盘，移动端适配
 
 ---
 
@@ -86,30 +108,15 @@ narrative_search.py scenes / scene / grep                  # 精准检索
 ```
 trpg-log-copilot/
 ├── SKILL.md                     ← AI 注入的完整工作流
+├── README.md                    ← 本文档
 ├── CHANGELOG.md
 ├── LICENSE                      ← Apache 2.0
 ├── scripts/                     ← CLI 命令
-│   ├── dice_roller.py
-│   ├── db_manager.py            ← graph/events/search/state/trace
-│   └── init_session.py
 ├── tools/                       ← 辅助工具
-│   ├── import_md.py             ← MD 表 → SQL 同步
-│   ├── file_ops.py              ← 大文件零 token 读写
-│   ├── narrative_search.py      ← 叙事文件精准检索
-│   ├── render_views.py          ← SQL → HTML 面板
-│   ├── export_dashboard.py      ← SQL → 角色面板
-│   ├── check_env.py
-│   └── rule_reader.py
 ├── references/                  ← 规范文档
-│   ├── evidence_standards.md    ← 三轴验证体系
-│   ├── md_schema_standard.md    ← MD/SQL 架构标准
-│   ├── rule_template.md         ← Rule 自举模板
-│   ├── state_reason_vocab.md    ← 状态变更词表
-│   ├── file_specs.md
-│   ├── schema.md
-│   └── coc7_quickref.md
-└── rule_lib/
-    └── _quickref_template.md
+├── rule_lib/                    ← 各规则系统速查
+├── assets/                      ← 面板 + 角色卡引擎
+└── demo/                        ← 示例跑团日志
 ```
 
 ---
