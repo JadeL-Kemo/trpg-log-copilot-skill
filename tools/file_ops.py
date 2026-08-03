@@ -49,7 +49,9 @@ def append_table(mdfile, col_args):
         cols['id'] = nid
     
     # Build row line — read header to get column order
-    header_match = re.search(r'\|([^|]+\|)+', text)
+    # Anchor at line start + exclude newlines so a `|`-containing blockquote or
+    # the rest of the document is not swallowed into one giant "header".
+    header_match = re.search(r'(?m)^\s*\|([^|\n]+\|)+', text)
     if header_match:
         header_cols = [c.strip() for c in header_match.group(0).strip('|').split('|')]
         header_cols = [h for h in header_cols if h]  # filter empty

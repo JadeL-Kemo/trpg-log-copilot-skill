@@ -21,13 +21,16 @@ LOG = sys.argv[1]; DB = sys.argv[2]
 # ============== MD table parser ==============
 def validate_table(text, fname=''):
     """Scan for | inside cell content (e.g. '医学|急救' → parsed as separate columns).
-    Returns list of warnings, empty if OK."""
+    Block-aware: reset expected column count at each table block boundary
+    (blank line / '---' / '## ' / non-table line). Returns list of warnings."""
     warnings = []
     lines = text.split('\n')
     header_cols = 0
     for i, line in enumerate(lines):
         line = line.strip()
-        if not line.startswith('|') or not line.endswith('|'): continue
+        if not line.startswith('|') or not line.endswith('|'):
+            header_cols = 0   # new table block
+            continue
         if re.match(r'^\|[\s\-:]+\|', line): continue
         cells = [c.strip() for c in line[1:-1].split('|')]
         if header_cols == 0:
@@ -39,7 +42,12 @@ def validate_table(text, fname=''):
     return warnings
 
 def parse_md_table(text):
-    """Parse markdown table into list of dicts. Header row determines column names.
+    """Parse markdown table blocks into list of dicts. Header row determines column names.
+    
+    Block-aware: a table block ends at a blank line, '---', '## ' heading, or any
+    line that is not '|...|'. Each block parses independently, so:
+      - repeated headers in multi-section files (01_线索.md) reset the column map
+      - tables after the main table (e.g. 地点 table in 02_人物.md) are NOT merged
     
     Input:
         | id | content | source | verified | priority | tags | linked |
@@ -54,6 +62,7 @@ def parse_md_table(text):
     for line in lines:
         line = line.strip()
         if not line.startswith('|') or not line.endswith('|'):
+            header = None; positions = None   # table block boundary
             continue
         if re.match(r'^\|[\s\-:]+\|', line):
             continue

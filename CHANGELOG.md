@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.8.12] — 2026-08-03
+
+### Fixed
+
+- **缺陷 A (P2): NPC 表跨表污染** — `parse_md_table` 改为按表块边界解析（空行/`##`/非表行重置 header），`02_人物.md` 中 `| 地点 | 意义 |` 表不再被误导入为伪 NPC；同步修复 `validate_table` 误报
+- **缺陷 B (P2): append-table 表头跨行吞并** — `file_ops.py` 正则加 `(?m)^\s*` 行首锚定 + `[^|\n]` 排除换行，blockquote `|` 不再被当表头
+- **缺陷 C (P3): 重复表头伪行** — 随缺陷 A 一并解决，多段线索表不再产生伪数据行
+- **缺陷 D (P3): file_specs 表头不一致** — 线索/时间线/NPC 三处中文表头范例改为英文（`id`/`content`/`verified`/`event_date`/`relationships` 等），与 SKILL.md/importer 对齐
+
+### 回归验证
+
+- 3 个测试 fixture 实测通过：含地点表的 `02_人物.md`（real_npc=1）、含 blockquote 的待办文件（header 精确 4 列）、多段重复表头 `01_线索.md`（恰好 2 行）
+
+---
+
 ## [1.8.11] — 2026-08-02
 
 ### Fixed
